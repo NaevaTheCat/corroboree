@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% load wagtailcore_tags %}
+
+{% block content %}
+    {% for post in newspages %}
+	{% with post=post.specific %}
+	    <h3>{{ post.pub_date }}</h3>
+	    {{ post.body|richtext }}
+	{% endwith %}
+    {% endfor %}
+{% endblock %}
