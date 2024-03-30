@@ -26,6 +26,7 @@ BASE_DIR = os.path.dirname(PROJECT_DIR)
 INSTALLED_APPS = [
     "home",
     "search",
+    "corroboree.config",
     "corroboree.news",
     "wagtail.contrib.forms",
     "wagtail.contrib.redirects",
@@ -92,7 +93,7 @@ DATABASES = {
     }
 }
 
-
+DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 # Password validation
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
