@@ -1,12 +1,16 @@
 from django.db import models
 
+from wagtail.admin.panels import FieldPanel
+from wagtail.snippets.models import register_snippet
 
+@register_snippet
 class Config(models.Model):
     max_weeks_till_booking = models.IntegerField(default=26)
     time_of_day_rollover = models.TimeField(
         help_text="What time of day to open bookings for the day max_weeks_till_booking from now")
 
 
+@register_snippet
 class Member(models.Model):
     config = models.ForeignKey(Config, on_delete=models.PROTECT)
     share_number = models.IntegerField(primary_key=True)
@@ -14,13 +18,20 @@ class Member(models.Model):
     last_name = models.CharField(max_length=128)
     contact_email = models.EmailField()
 
+    def __str__(self):
+        share_prefix = '[' + str(self.share_number) + ']: '
+        name = self.first_name + ' ' + self.last_name
+        return share_prefix + name
 
+
+@register_snippet
 class FamilyMember(models.Model):
     primary_shareholder = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="family")
     first_name = models.CharField(max_length=128)
     last_name = models.CharField(max_length=128)
 
 
+@register_snippet
 class Room(models.Model):
     config = models.ForeignKey(Config, on_delete=models.PROTECT, related_name="rooms")
     room_number = models.IntegerField(primary_key=True)
@@ -28,6 +39,7 @@ class Room(models.Model):
     max_occupants = models.IntegerField("Maximum Room Occupants", default=4)
 
 
+@register_snippet
 class Season(models.Model):
     config = models.ForeignKey(Config, on_delete=models.PROTECT, related_name="seasons")
 
@@ -54,6 +66,7 @@ class Season(models.Model):
     season_is_peak = models.BooleanField()
 
 
+@register_snippet
 class BookingType(models.Model):
     config = models.ForeignKey(Config, on_delete=models.PROTECT, related_name="booking_types")
     booking_type_name = models.CharField(max_length=128)
