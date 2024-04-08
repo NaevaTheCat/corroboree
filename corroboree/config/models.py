@@ -88,7 +88,7 @@ class Season(models.Model):
         December = 12
 
     season_name = models.CharField(max_length=128)
-    max_monthly_room_weeks = models.IntegerField()
+    max_monthly_room_weeks = models.IntegerField(blank=True, null=True)
     start_month = models.IntegerField(choices=Months,
                                       help_text="The season will begin at the first day of the selected month")
     end_month = models.IntegerField(choices=Months,
@@ -105,8 +105,8 @@ class BookingType(models.Model):
     booking_type_name = models.CharField(max_length=128)
     rate = models.IntegerField()
     is_full_week_only = models.BooleanField()
-    banned_rooms = models.ManyToManyField(Room)
-    seasons_active = models.ManyToManyField(Season, related_name="booking_types")
+    banned_rooms = models.ManyToManyField(Room, blank=True, null=True)
+    season_active = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="booking_types")
     minimum_rooms = models.IntegerField("Minimum number of booked rooms")
 
     class Priorities(models.IntegerChoices):
