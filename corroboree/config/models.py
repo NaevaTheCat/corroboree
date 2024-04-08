@@ -1,7 +1,9 @@
 from django.db import models
+from django.db.models import F
 
 from wagtail.admin.panels import FieldPanel
 from wagtail.snippets.models import register_snippet
+
 
 @register_snippet
 class Config(models.Model):
@@ -30,13 +32,41 @@ class FamilyMember(models.Model):
     first_name = models.CharField(max_length=128)
     last_name = models.CharField(max_length=128)
 
+    def __str__(self):
+        name = self.first_name + ' ' + self.last_name
+        share_holder = '(' + str(self.primary_shareholder) + ') '
+        return share_holder + name
+
+
+@register_snippet
+class RoomType(models.Model):
+    double_beds = models.IntegerField()
+    bunk_beds = models.IntegerField()
+    max_occupants = models.GeneratedField(
+        expression=F("double_beds") * 2 + F("bunk_beds"),
+        output_field=models.IntegerField(),
+        db_persist=True)
+
+    # TODO validate limits (e.g. negatives)
+
+    def __str__(self):  # bad plurals
+        double_text = "" if self.double_beds == 0 else str(self.double_beds) + " double bed"
+        bunk_text = "" if self.bunk_beds == 0 else str(self.bunk_beds) + " bunk beds"
+        if bunk_text == "" or double_text == "":
+            join_text = ""
+        else:
+            join_text = ", "
+        return double_text + join_text + bunk_text
+
 
 @register_snippet
 class Room(models.Model):
     config = models.ForeignKey(Config, on_delete=models.PROTECT, related_name="rooms")
     room_number = models.IntegerField(primary_key=True)
-    room_description = models.CharField(max_length=128)
-    max_occupants = models.IntegerField("Maximum Room Occupants", default=4)
+    room_type = models.ForeignKey(RoomType, on_delete=models.PROTECT)
+
+    def __str__(self):
+        return str(self.room_number) + ': ' + str(self.room_type)
 
 
 @register_snippet
@@ -65,6 +95,9 @@ class Season(models.Model):
                                     help_text="The season will end at the end of the last day of the prior month")
     season_is_peak = models.BooleanField()
 
+    def __str__(self):
+        return self.season_name
+
 
 @register_snippet
 class BookingType(models.Model):
@@ -83,3 +116,6 @@ class BookingType(models.Model):
 
     priority_rank = models.IntegerField(choices=Priorities, default=Priorities.LOW,
                                         help_text="Priority booking takes when calculating costs when multiple kinds are valid.")
+
+    def __str__(self):
+        return self.booking_type_name
