@@ -1,8 +1,19 @@
 from django.db import models
 from django.db.models import F
 
+from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from wagtail.admin.panels import FieldPanel
 from wagtail.snippets.models import register_snippet
+
+
+# Validators
+def validate_only_one_instance(obj):
+    model = obj.__class__
+    if (model.objects.count() > 0 and
+            obj.pk != model.objects.get().pk):
+        raise ValidationError("Can only create 1 %s instance" % model.__name__)
 
 
 @register_snippet
@@ -11,11 +22,18 @@ class Config(models.Model):
     time_of_day_rollover = models.TimeField(
         help_text="What time of day to open bookings for the day max_weeks_till_booking from now")
 
+    def clean(self):
+        validate_only_one_instance(self)
+
 
 @register_snippet
 class Member(models.Model):
     config = models.ForeignKey(Config, on_delete=models.PROTECT)
-    share_number = models.IntegerField(primary_key=True)
+    share_number = models.IntegerField(primary_key=True,
+                                       validators=[
+                                           MaxValueValidator(50, message="Cannot exceed 50 shares"),
+                                           MinValueValidator(1, message="Share number is less than 1")
+                                       ])
     first_name = models.CharField(max_length=128)
     last_name = models.CharField(max_length=128)
     contact_email = models.EmailField()
@@ -37,17 +55,28 @@ class FamilyMember(models.Model):
         share_holder = '(' + str(self.primary_shareholder) + ') '
         return share_holder + name
 
+    def clean(self):
+        # TODO move to settings
+        maximum_family_members = 5
+        if self.primary_shareholder.family.count() >= maximum_family_members:
+            raise ValidationError("Cannot add more than %s family members" % str(maximum_family_members))
+
 
 @register_snippet
 class RoomType(models.Model):
-    double_beds = models.IntegerField()
-    bunk_beds = models.IntegerField()
+    # TODO move to limits to settings
+    double_beds = models.IntegerField(validators=[
+        MaxValueValidator(2),
+        MinValueValidator(0),
+    ])
+    bunk_beds = models.IntegerField(validators=[
+        MaxValueValidator(4),
+        MinValueValidator(0),
+    ])
     max_occupants = models.GeneratedField(
         expression=F("double_beds") * 2 + F("bunk_beds"),
         output_field=models.IntegerField(),
         db_persist=True)
-
-    # TODO validate limits (e.g. negatives)
 
     def __str__(self):  # bad plurals
         double_text = "" if self.double_beds == 0 else str(self.double_beds) + " double bed"
@@ -61,8 +90,12 @@ class RoomType(models.Model):
 
 @register_snippet
 class Room(models.Model):
+    # TODO validators to settings
     config = models.ForeignKey(Config, on_delete=models.PROTECT, related_name="rooms")
-    room_number = models.IntegerField(primary_key=True)
+    room_number = models.IntegerField(primary_key=True, validators=[
+        MaxValueValidator(9, "Exceeds maximum rooms"),
+        MinValueValidator(1),
+    ])
     room_type = models.ForeignKey(RoomType, on_delete=models.PROTECT)
 
     def __str__(self):
