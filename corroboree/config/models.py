@@ -1,10 +1,11 @@
 from django.db import models
 from django.db.models import F
+from django import forms
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from wagtail.admin.panels import FieldPanel
+from wagtail.admin.panels import FieldPanel, FieldRowPanel
 from wagtail.snippets.models import register_snippet
 
 
@@ -56,6 +57,8 @@ class FamilyMember(models.Model):
         return share_holder + name
 
     def clean(self):
+        if not hasattr(self, 'primary_shareholder'):
+            return
         # TODO move to settings
         maximum_family_members = 5
         if self.primary_shareholder.family.count() >= maximum_family_members:
@@ -121,16 +124,43 @@ class Season(models.Model):
         December = 12
 
     season_name = models.CharField(max_length=128)
-    max_monthly_room_weeks = models.IntegerField(blank=True, null=True)
+    max_monthly_room_weeks = models.IntegerField(blank=True, null=True,
+                                                 help_text="Leave blank for no limit")
     start_month = models.IntegerField(choices=Months,
                                       help_text="The season will begin at the first day of the selected month")
     end_month = models.IntegerField(choices=Months,
-                                    help_text="The season will end at the end of the last day of the prior month")
+                                    help_text="The season will end at the end of the last day of the selected month")
     season_is_peak = models.BooleanField()
+
+    panels = [
+        FieldPanel("config"),
+        FieldPanel("season_name"),
+        FieldPanel("max_monthly_room_weeks"),
+        FieldRowPanel([
+            FieldPanel("start_month"),
+            FieldPanel("end_month"),
+            ]),
+        FieldPanel("season_is_peak"),
+    ]
 
     def __str__(self):
         return self.season_name
 
+    def clean(self):
+        # make sure correct stuff is set
+        if not hasattr(self, 'config') or self.start_month is None or self.end_month is None:
+            return
+        # compare like-kinded seasons
+        if self.season_is_peak:
+            other_seasons = self.config.seasons.filter(season_is_peak=True)
+        else:
+            other_seasons = self.config.seasons.filter(season_is_peak=False)
+        this_start = self.start_month
+        this_end = self.end_month
+        for s in other_seasons:
+            # do seasons overlap
+            if s.start_month <= this_end or s.end_month >= this_start:
+                raise ValidationError("This season shares months with %s" % s.__str__())
 
 @register_snippet
 class BookingType(models.Model):
