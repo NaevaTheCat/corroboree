@@ -168,7 +168,7 @@ class BookingType(models.Model):
     booking_type_name = models.CharField(max_length=128)
     rate = models.IntegerField()
     is_full_week_only = models.BooleanField()
-    banned_rooms = models.ManyToManyField(Room, blank=True, null=True)
+    banned_rooms = models.ManyToManyField(Room, blank=True)
     season_active = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="booking_types")
     minimum_rooms = models.IntegerField("Minimum number of booked rooms")
 
@@ -182,3 +182,11 @@ class BookingType(models.Model):
 
     def __str__(self):
         return self.booking_type_name
+
+    def clean(self):
+        if not hasattr(self, 'config') or not hasattr(self, 'season_active'):
+            return
+        # ensure unique priorities
+        similar_priority_bookings = self.season_active.booking_types.filter(priority_rank=self.priority_rank)
+        if similar_priority_bookings.count() > 0:
+            raise ValidationError("Overlapping priority with BookingType: %s" % similar_priority_bookings.get().booking_type_name)
