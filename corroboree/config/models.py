@@ -50,6 +50,7 @@ class FamilyMember(models.Model):
     primary_shareholder = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="family")
     first_name = models.CharField(max_length=128)
     last_name = models.CharField(max_length=128)
+    contact_email = models.EmailField()
 
     def __str__(self):
         name = self.first_name + ' ' + self.last_name
@@ -166,7 +167,7 @@ class Season(models.Model):
 class BookingType(models.Model):
     config = models.ForeignKey(Config, on_delete=models.PROTECT, related_name="booking_types")
     booking_type_name = models.CharField(max_length=128)
-    rate = models.IntegerField()
+    rate = models.DecimalField(max_digits=8, decimal_places=2)
     is_full_week_only = models.BooleanField()
     banned_rooms = models.ManyToManyField(Room, blank=True)
     season_active = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="booking_types")
