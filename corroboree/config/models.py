@@ -180,6 +180,19 @@ class BookingType(models.Model):
     priority_rank = models.IntegerField(choices=Priorities, default=Priorities.LOW,
                                         help_text="Priority booking takes when calculating costs when multiple kinds are valid.")
 
+    panels = [
+        FieldPanel("config"),
+        FieldPanel("booking_type_name"),
+        FieldRowPanel([
+            FieldPanel("season_active"),
+            FieldPanel("rate"),
+            FieldPanel("is_full_week_only")
+        ]),
+        FieldPanel("banned_rooms", widget=forms.CheckboxSelectMultiple),
+        FieldPanel("minimum_rooms"),
+        FieldPanel("priority_rank"),
+    ]
+
     def __str__(self):
         return self.booking_type_name
 
