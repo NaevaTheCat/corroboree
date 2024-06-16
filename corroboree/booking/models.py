@@ -1,5 +1,7 @@
 from django.db import models
 
+from wagtail.models import Page
+
 from wagtail.snippets.models import register_snippet
 
 from corroboree.config import models as config
@@ -27,3 +29,6 @@ class BookingRecord(models.Model):
     cost = models.DecimalField(max_digits=8, decimal_places=2)
     payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus)
     status = models.CharField(max_length=2, choices=BookingRecordStatus)
+
+class BookingPage(Page):
+    pass
