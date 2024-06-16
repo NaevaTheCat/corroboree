@@ -26,6 +26,7 @@ BASE_DIR = os.path.dirname(PROJECT_DIR)
 INSTALLED_APPS = [
     "home",
     "search",
+    "corroboree",
     "corroboree.config",
     "corroboree.booking",
     "corroboree.news",
