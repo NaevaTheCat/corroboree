@@ -1,6 +1,7 @@
 {% load wagtailcore_tags navigation_tags %}
 
 <header>
+    <div class="row">
     {% get_site_root as site_root %}
     <nav>
         <p>
@@ -10,4 +11,16 @@
         {% endfor %}
         </p>
     </nav>
+    </div>
+    <div class="row">
+	{% if request.user.is_authenticated %}
+	    <h3>Hello {{ request.user.first_name }} {{ request.user.last_name }}</h3>
+	    <form method="post" action="{% url 'logout' %}">
+		{% csrf_token %}
+		<button type="submit">logout</button>
+	    </form>
+	{% else %}
+            <a href="{% url 'login' %}"><button>Log In</button></a>
+	{% endif %}
+    </div>
 </header>
