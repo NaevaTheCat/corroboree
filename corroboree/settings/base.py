@@ -28,6 +28,7 @@ INSTALLED_APPS = [
     "search",
     "corroboree",
     "corroboree.config",
+    "corroboree.users",
     "corroboree.booking",
     "corroboree.news",
     "wagtail.contrib.forms",
@@ -177,7 +178,12 @@ WAGTAILSEARCH_BACKENDS = {
 # e.g. in notification emails. Don't include '/admin' or a trailing slash
 WAGTAILADMIN_BASE_URL = "http://example.com"
 
+# User related Settings
 WAGTAIL_FRONTEND_LOGIN_TEMPLATE = "registration/login.html"
 WAGTAIL_FRONTEND_LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
+AUTH_USER_MODEL = 'users.MemberAccount'
+WAGTAIL_USER_EDIT_FORM = "corroboree.users.forms.CustomUserEditForm"
+WAGTAIL_USER_CREATION_FORM = "corroboree.users.forms.CustomUserCreationForm"
+WAGTAIL_USER_CUSTOM_FIELDS = ["member"]
