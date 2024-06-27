@@ -5,9 +5,11 @@ from django import forms
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
-from wagtail.admin.panels import FieldPanel, FieldRowPanel
+from wagtail.admin.panels import FieldPanel, FieldRowPanel, InlinePanel
 from wagtail.snippets.models import register_snippet
 
+from modelcluster.models import ClusterableModel
+from modelcluster.fields import ParentalKey, ParentalManyToManyField
 
 # Validators
 def validate_only_one_instance(obj):
@@ -18,18 +20,28 @@ def validate_only_one_instance(obj):
 
 
 @register_snippet
-class Config(models.Model):
+class Config(ClusterableModel):
     max_weeks_till_booking = models.IntegerField(default=26)
     time_of_day_rollover = models.TimeField(
         help_text="What time of day to open bookings for the day max_weeks_till_booking from now")
+
+    panels = [
+        FieldRowPanel([
+            FieldPanel("max_weeks_till_booking"),
+            FieldPanel("time_of_day_rollover"),
+        ]),
+        InlinePanel("members", label="Members"),
+        InlinePanel("room_types", label="Room Types"),
+        InlinePanel("seasons", label="Seasons"),
+    ]
 
     def clean(self):
         validate_only_one_instance(self)
 
 
 @register_snippet
-class Member(models.Model):
-    config = models.ForeignKey(Config, on_delete=models.PROTECT)
+class Member(ClusterableModel):
+    config = ParentalKey(Config, on_delete=models.PROTECT, related_name="members")
     share_number = models.IntegerField(primary_key=True,
                                        validators=[
                                            MaxValueValidator(50, message="Cannot exceed 50 shares"),
@@ -39,6 +51,17 @@ class Member(models.Model):
     last_name = models.CharField(max_length=128)
     contact_email = models.EmailField()
 
+    panels = [
+        FieldPanel("config"),
+        FieldPanel("share_number"),
+        FieldRowPanel([
+            FieldPanel("first_name"),
+            FieldPanel("last_name"),
+        ]),
+        FieldPanel("contact_email"),
+        InlinePanel("family", label="Family", help_text="Include the share owner"),
+    ]
+
     def __str__(self):
         share_prefix = '[' + str(self.share_number) + ']: '
         name = self.first_name + ' ' + self.last_name
@@ -46,11 +69,20 @@ class Member(models.Model):
 
 
 @register_snippet
-class FamilyMember(models.Model):
-    primary_shareholder = models.ForeignKey(Member, on_delete=models.CASCADE, related_name="family")
+class FamilyMember(ClusterableModel):
+    primary_shareholder = ParentalKey(Member, on_delete=models.CASCADE, related_name="family")
     first_name = models.CharField(max_length=128)
     last_name = models.CharField(max_length=128)
     contact_email = models.EmailField()
+
+    panels = [
+        FieldPanel("primary_shareholder"),
+        FieldRowPanel([
+            FieldPanel("first_name"),
+            FieldPanel("last_name"),
+        ]),
+        FieldPanel("contact_email"),
+    ]
 
     def __str__(self):
         name = self.first_name + ' ' + self.last_name
@@ -67,7 +99,8 @@ class FamilyMember(models.Model):
 
 
 @register_snippet
-class RoomType(models.Model):
+class RoomType(ClusterableModel):
+    config = ParentalKey(Config, on_delete=models.CASCADE, related_name="room_types")
     # TODO move to limits to settings
     double_beds = models.IntegerField(validators=[
         MaxValueValidator(2),
@@ -82,6 +115,14 @@ class RoomType(models.Model):
         output_field=models.IntegerField(),
         db_persist=True)
 
+    panels = [
+        FieldRowPanel([
+            FieldPanel("double_beds"),
+            FieldPanel("bunk_beds"),
+        ]),
+        InlinePanel("rooms", label="Rooms of Type"),
+    ]
+
     def __str__(self):  # bad plurals
         double_text = "" if self.double_beds == 0 else str(self.double_beds) + " double bed"
         bunk_text = "" if self.bunk_beds == 0 else str(self.bunk_beds) + " bunk beds"
@@ -93,22 +134,22 @@ class RoomType(models.Model):
 
 
 @register_snippet
-class Room(models.Model):
+class Room(ClusterableModel):
     # TODO validators to settings
-    config = models.ForeignKey(Config, on_delete=models.PROTECT, related_name="rooms")
+    config = ParentalKey(Config, on_delete=models.PROTECT, related_name="rooms")
     room_number = models.IntegerField(primary_key=True, validators=[
         MaxValueValidator(9, "Exceeds maximum rooms"),
         MinValueValidator(1),
     ])
-    room_type = models.ForeignKey(RoomType, on_delete=models.PROTECT)
+    room_type = ParentalKey(RoomType, on_delete=models.PROTECT, related_name="rooms")
 
     def __str__(self):
         return str(self.room_number) + ': ' + str(self.room_type)
 
 
 @register_snippet
-class Season(models.Model):
-    config = models.ForeignKey(Config, on_delete=models.PROTECT, related_name="seasons")
+class Season(ClusterableModel):
+    config = ParentalKey(Config, on_delete=models.PROTECT, related_name="seasons")
 
     class Months(models.IntegerChoices):
         January = 1
@@ -164,14 +205,14 @@ class Season(models.Model):
                 raise ValidationError("This season shares months with %s" % s.__str__())
 
 @register_snippet
-class BookingType(models.Model):
-    config = models.ForeignKey(Config, on_delete=models.PROTECT, related_name="booking_types")
+class BookingType(ClusterableModel):
+    config = ParentalKey(Config, on_delete=models.PROTECT, related_name="booking_types")
     booking_type_name = models.CharField(max_length=128)
     rate = models.DecimalField(max_digits=8, decimal_places=2)
     is_full_week_only = models.BooleanField()
-    banned_rooms = models.ManyToManyField(Room, blank=True)
-    season_active = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="booking_types")
-    minimum_rooms = models.IntegerField("Minimum number of booked rooms")
+    banned_rooms = ParentalManyToManyField(Room, blank=True)
+    season_active = ParentalKey(Season, on_delete=models.CASCADE, related_name="booking_types")
+    minimum_rooms = models.IntegerField("Minimum number of booked rooms", default=0)
 
     class Priorities(models.IntegerChoices):
         HIGH = 1
