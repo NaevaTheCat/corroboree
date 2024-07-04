@@ -11,6 +11,7 @@ from wagtail.snippets.models import register_snippet
 from modelcluster.models import ClusterableModel
 from modelcluster.fields import ParentalKey, ParentalManyToManyField
 
+
 # Validators
 def validate_only_one_instance(obj):
     model = obj.__class__
