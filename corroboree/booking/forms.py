@@ -62,12 +62,43 @@ class BookingDateRangeForm(forms.Form):
 
 
 class BookingRoomChoosingForm(forms.Form):
+    start_date = forms.DateField(
+        label="Start date",
+        widget=widgets.AdminDateInput(
+            attrs={
+                "placeholder": "dd-mm-yyyy",
+                "type": "date",
+                "readonly": "readonly",
+            }
+        ),
+        disabled=True, # prevents tampering
+    )
+    end_date = forms.DateField(
+        label="End date",
+        widget=widgets.AdminDateInput(
+            attrs={
+                "placeholder": "dd-mm-yyyy",
+                "type": "date",
+                "readonly": "readonly",
+            }
+        ),
+        disabled=True, # prevents tampering
+    )
     room_selection = forms.ModelMultipleChoiceField(
         queryset=None,
         widget=forms.CheckboxSelectMultiple,
     )
+    member = forms.ModelChoiceField(
+        queryset=config.Member.objects.all(),
+        widget=forms.Select(
+            attrs={
+                "readonly": "readonly",
+            }
+        ),
+        disabled=True,
+    )
 
-    def __init__(self, *args, start_date=None, end_date=None, **kwargs):
+    def __init__(self, *args, start_date=None, end_date=None, member=None, **kwargs):
         super().__init__(*args, **kwargs)
         if start_date is not None and end_date is not None:
             current_booking_records = BookingRecord.objects.filter(
@@ -81,3 +112,7 @@ class BookingRoomChoosingForm(forms.Form):
             booked_room_ids = overlapping_bookings.values_list("rooms", flat=True)
             available_rooms = config.Room.objects.exclude(pk__in=booked_room_ids)
             self.fields["room_selection"].queryset = available_rooms
+            self.fields["start_date"].initial = start_date
+            self.fields["end_date"].initial = end_date
+            self.fields["member"].initial = member
+

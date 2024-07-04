@@ -38,27 +38,37 @@ class BookingRecord(models.Model):
 
 class BookingPage(Page):
     intro = RichTextField(blank=True)
+    not_authorised_message = RichTextField(blank=True)
+
 
     content_panels = Page.content_panels + [
         FieldPanel("intro"),
+        FieldPanel("not_authorised_message")
     ]
 
     def serve(self, request):
-        from corroboree.booking.forms import BookingDateRangeForm, BookingRoomChoosingForm
-
-        if request.method == "POST":
-            form = BookingDateRangeForm(request.POST)
-            if form.is_valid():
-                start_date = form.cleaned_data.get("start_date")
-                end_date = form.cleaned_data.get("end_date")
-                form = BookingRoomChoosingForm(start_date=start_date, end_date=end_date)
+        member = request.user.member
+        if member is None:
+            return render(request, "booking/not_authorised.html", {
+                'page': self,
+            })
         else:
-            form = BookingDateRangeForm()
+            from corroboree.booking.forms import BookingDateRangeForm, BookingRoomChoosingForm
+            room_form = None
+            if request.method == "POST":
+                date_form = BookingDateRangeForm(request.POST)
+                if date_form.is_valid():
+                    start_date = date_form.cleaned_data.get("start_date")
+                    end_date = date_form.cleaned_data.get("end_date")
+                    room_form = BookingRoomChoosingForm(start_date=start_date, end_date=end_date, member=member)
+            else:
+                date_form = BookingDateRangeForm()
 
-        return render(request, 'booking/select_dates.html', {
-            "page": self,
-            "form": form,
-        })
+            return render(request, 'booking/select_dates.html', {
+                "page": self,
+                "date_form": date_form,
+                "room_form": room_form,
+            })
 
 
 class BookingCalendar(Page):

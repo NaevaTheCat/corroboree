@@ -8,8 +8,19 @@
     <form action="." method="POST">
 	{% csrf_token %}
 
-	{{ form }}
+	{{ date_form }}
 
-	<input type="submit" value="Search dates">
+	<input type="submit" value="{% if room_form %}Search again{% else %}Search dates{% endif %}">
     </form>
+    
+    {% if room_form %}
+	<form action="/mybookings/" method="POST">
+	    {% csrf_token %}
+
+	    {{ room_form }}
+
+	    <input type="submit" value="Proceed to Booking">
+	</form>
+    {% endif %}
+    
 {% endblock %}
