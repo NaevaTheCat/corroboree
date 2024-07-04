@@ -2,7 +2,6 @@ from django.db import models
 from django.db.models import F
 from django import forms
 
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from wagtail.admin.panels import FieldPanel, FieldRowPanel, InlinePanel
@@ -25,15 +24,36 @@ class Config(ClusterableModel):
     max_weeks_till_booking = models.IntegerField(default=26)
     time_of_day_rollover = models.TimeField(
         help_text="What time of day to open bookings for the day max_weeks_till_booking from now")
+    number_of_rooms = models.IntegerField(default=9)
+    maximum_family_members = models.IntegerField(
+        default=10,
+        help_text="maximum authorised family members including primary shareholder"
+    )
 
     panels = [
         FieldRowPanel([
             FieldPanel("max_weeks_till_booking"),
             FieldPanel("time_of_day_rollover"),
         ]),
-        InlinePanel("members", label="Members"),
-        InlinePanel("room_types", label="Room Types"),
-        InlinePanel("seasons", label="Seasons"),
+        FieldPanel("maximum_family_members"),
+        InlinePanel("members", label="Members",
+                    panels=[
+                        FieldPanel("config"),
+                        FieldPanel("share_number"),
+                        FieldRowPanel([
+                            FieldPanel("first_name"),
+                            FieldPanel("last_name"),
+                        ]),
+                        FieldPanel("contact_email"),
+                    ]),
+        FieldPanel("number_of_rooms"),
+        InlinePanel("room_types", label="Room Types",
+                    panels=[
+                        FieldRowPanel([
+                            FieldPanel("double_beds"),
+                            FieldPanel("bunk_beds"),
+                        ]),
+                    ]),
     ]
 
     def clean(self):
@@ -93,8 +113,7 @@ class FamilyMember(ClusterableModel):
     def clean(self):
         if not hasattr(self, 'primary_shareholder'):
             return
-        # TODO move to settings
-        maximum_family_members = 5
+        maximum_family_members = self.primary_shareholder.config.maximum_family_members
         if self.primary_shareholder.family.count() >= maximum_family_members:
             raise ValidationError("Cannot add more than %s family members" % str(maximum_family_members))
 
@@ -182,7 +201,7 @@ class Season(ClusterableModel):
         FieldRowPanel([
             FieldPanel("start_month"),
             FieldPanel("end_month"),
-            ]),
+        ]),
         FieldPanel("season_is_peak"),
     ]
 
@@ -204,6 +223,7 @@ class Season(ClusterableModel):
             # do seasons overlap
             if s.start_month <= this_end or s.end_month >= this_start:
                 raise ValidationError("This season shares months with %s" % s.__str__())
+
 
 @register_snippet
 class BookingType(ClusterableModel):
@@ -245,4 +265,5 @@ class BookingType(ClusterableModel):
         # ensure unique priorities
         similar_priority_bookings = self.season_active.booking_types.filter(priority_rank=self.priority_rank)
         if similar_priority_bookings.count() > 0:
-            raise ValidationError("Overlapping priority with BookingType: %s" % similar_priority_bookings.get().booking_type_name)
+            raise ValidationError(
+                "Overlapping priority with BookingType: %s" % similar_priority_bookings.get().booking_type_name)
