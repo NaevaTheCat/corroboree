@@ -1,11 +1,14 @@
 from django.db import models
 from django.shortcuts import render
+from django.views.decorators.csrf import csrf_protect
 
 from wagtail.models import Page
 from wagtail.fields import RichTextField
 from wagtail.admin.panels import FieldPanel
 
 from wagtail.snippets.models import register_snippet
+
+import datetime
 
 from corroboree.config import models as config
 
@@ -69,6 +72,30 @@ class BookingPage(Page):
                 "date_form": date_form,
                 "room_form": room_form,
             })
+
+@csrf_protect
+class BookingPageUserSummary(Page):
+    intro = RichTextField(blank=True)
+    no_bookings_text = RichTextField(blank=True)
+
+    content_panels = Page.content_panels + [
+        FieldPanel('intro'),
+        FieldPanel('no_bookings_text'),
+    ]
+
+    def get_context(self, request):
+        context = super().get_context(request)
+        if request.user.is_authenticated:
+            member = request.user.member
+            today = datetime.datetime.today()
+            member_bookings = BookingRecord.objects.filter(
+                end_date__gt=today,
+                member__exact=member,
+            ).exclude(
+                status__exact=BookingRecord.BookingRecordStatus.CANCELLED,
+            ).order_by('start_date')
+            context['member_bookings'] = member_bookings
+        return context
 
 
 class BookingCalendar(Page):

@@ -14,7 +14,7 @@
     </form>
     
     {% if room_form %}
-	<form action="/mybookings/" method="POST">
+	<form action="/my-bookings/" method="POST">
 	    {% csrf_token %}
 
 	    {{ room_form }}

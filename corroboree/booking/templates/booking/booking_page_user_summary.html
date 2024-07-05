@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% load wagtailcore_tags %}
+
+{% block content %}
+    {% if member_bookings %}
+	{{ page.intro | richtext }}
+	<div id="table">
+	    <table border=0>
+		<thead>
+		    <tr>
+			<th>Start date</th>
+			<th>End date</th>
+			<th>Rooms</th>
+			<th>Status</th>
+		    </tr>
+		</thead>
+		<tbody>
+		    {% for booking in member_bookings %}
+			<tr>
+			    <td>{{ booking.start_date }}</td>
+			    
+			    <td>{{ booking.end_date }}</td>
+			    
+			    <td>
+				{% for room in booking.rooms.all %}
+				    {{ room.room_number }}{% if not forloop.last %}, {% endif %}
+				{% endfor %}
+			    </td>
+			    
+			    <td>{{ booking.status }}</td>
+			</tr>
+		    {% endfor %}
+		</tbody>
+	    </table>
+	</div>
+    {% else %}
+	
+	{{ page.no_bookings_text | richtext }}
+
+    {% endif %}
+{% endblock %}
