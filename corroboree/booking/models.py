@@ -1,5 +1,5 @@
 from django.db import models
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_protect
 
 from wagtail.models import Page
@@ -78,8 +78,8 @@ class BookingPage(Page):
                         )
                         booking_record.save()
                         rooms = room_form.cleaned_data.get('room_selection')
-                        #rooms = config.Room.objects.filter(room_number__in=room_form.cleaned_data.get('room_selection'))
                         booking_record.rooms.set(rooms)
+                        return redirect('/my-bookings/%s' % booking_record.pk)
                     # Preset the date values on the date form for consistency
                     start_date = room_form.data.get("start_date")
                     end_date = room_form.data.get("end_date")
