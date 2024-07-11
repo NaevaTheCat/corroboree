@@ -100,16 +100,23 @@ class BookingRoomChoosingForm(forms.Form):
         if start_date is not None and end_date is not None:
             current_booking_records = BookingRecord.objects.filter(
                 end_date__gt=datetime.date.today(),
-                start_date__lte=end_date,
+                start_date__lt=end_date,
             ).exclude(status__exact=BookingRecord.BookingRecordStatus.CANCELLED)
             overlapping_bookings = current_booking_records.exclude(
                 start_date__gte=end_date,
                 end_date__lte=start_date,
             )
-            booked_room_ids = overlapping_bookings.values_list("rooms", flat=True)
-            available_rooms = config.Room.objects.exclude(pk__in=booked_room_ids)
+            booked_room_ids = overlapping_bookings.values_list('rooms__room_number', flat=True)
+            available_rooms = config.Room.objects.exclude(pk__in=list(booked_room_ids)) # breaks on None, which should be impossible, if fed the raw queryset.
             self.fields["room_selection"].queryset = available_rooms
             self.fields["start_date"].initial = start_date
             self.fields["end_date"].initial = end_date
             self.fields["member"].initial = member
 
+    def clean(self):
+        cleaned_data = super().clean()
+        room_selection = cleaned_data.get('room_selection')
+        if room_selection is None:
+            raise forms.ValidationError(
+                'You must select at least one room'
+            )
