@@ -102,7 +102,7 @@ class BookingPage(Page):
                 "room_form": room_form,
             })
 
-@csrf_protect
+@csrf_protect #superstitious? might've fixed a bug once
 class BookingPageUserSummary(Page):
     intro = RichTextField(blank=True)
     no_bookings_text = RichTextField(blank=True)
