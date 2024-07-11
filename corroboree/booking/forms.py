@@ -71,7 +71,6 @@ class BookingRoomChoosingForm(forms.Form):
                 "readonly": "readonly",
             }
         ),
-        disabled=True, # prevents tampering
     )
     end_date = forms.DateField(
         label="End date",
@@ -82,7 +81,6 @@ class BookingRoomChoosingForm(forms.Form):
                 "readonly": "readonly",
             }
         ),
-        disabled=True, # prevents tampering
     )
     room_selection = forms.ModelMultipleChoiceField(
         queryset=None,
@@ -95,7 +93,6 @@ class BookingRoomChoosingForm(forms.Form):
                 "readonly": "readonly",
             }
         ),
-        disabled=True,
     )
 
     def __init__(self, *args, start_date=None, end_date=None, member=None, **kwargs):
