@@ -103,7 +103,7 @@ class BookingRoomChoosingForm(forms.Form):
                 start_date__lt=end_date,
             ).exclude(status__exact=BookingRecord.BookingRecordStatus.CANCELLED)
             overlapping_bookings = current_booking_records.exclude(
-                start_date__gte=end_date,
+                start_date__gte=end_date).exclude(
                 end_date__lte=start_date,
             )
             booked_room_ids = overlapping_bookings.values_list('rooms__room_number', flat=True)
@@ -112,7 +112,6 @@ class BookingRoomChoosingForm(forms.Form):
             self.fields["start_date"].initial = start_date
             self.fields["end_date"].initial = end_date
             self.fields["member"].initial = member
-
     def clean(self):
         cleaned_data = super().clean()
         room_selection = cleaned_data.get('room_selection')
