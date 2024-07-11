@@ -14,12 +14,12 @@
     </form>
     
     {% if room_form %}
-	<form action="/my-bookings/" method="POST">
+	<form action="." method="POST">
 	    {% csrf_token %}
 
 	    {{ room_form }}
 
-	    <input type="submit" value="Proceed to Booking">
+	    <input type="submit" name="room_form" value="Proceed to Booking">
 	</form>
     {% endif %}
     

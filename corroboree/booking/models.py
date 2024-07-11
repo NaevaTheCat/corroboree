@@ -32,10 +32,10 @@ class BookingRecord(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     rooms = models.ManyToManyField(config.Room)
-    member_in_attendance = models.ForeignKey(config.FamilyMember, on_delete=models.PROTECT, related_name="bookings")
-    other_attendees = models.JSONField(default=dict)  # {{first:, last:, contact:}}
+    member_in_attendance = models.ForeignKey(config.FamilyMember, on_delete=models.PROTECT, related_name="bookings", null=True)
+    other_attendees = models.JSONField(default=dict, blank=True)  # {{first:, last:, contact:}}
     cost = models.DecimalField(max_digits=8, decimal_places=2)
-    payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus)
+    payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus, blank=True)
     status = models.CharField(max_length=2, choices=BookingRecordStatus)
 
 
@@ -50,20 +50,49 @@ class BookingPage(Page):
     ]
 
     def serve(self, request):
+        from corroboree.booking.forms import BookingDateRangeForm, BookingRoomChoosingForm
         member = request.user.member
+        room_form = None
         if member is None:
             return render(request, "booking/not_authorised.html", {
                 'page': self,
             })
         else:
-            from corroboree.booking.forms import BookingDateRangeForm, BookingRoomChoosingForm
-            room_form = None
             if request.method == "POST":
-                date_form = BookingDateRangeForm(request.POST)
-                if date_form.is_valid():
-                    start_date = date_form.cleaned_data.get("start_date")
-                    end_date = date_form.cleaned_data.get("end_date")
-                    room_form = BookingRoomChoosingForm(start_date=start_date, end_date=end_date, member=member)
+                if 'room_form' in request.POST:
+                    room_form = BookingRoomChoosingForm(
+                        request.POST,
+                        start_date=request.POST['start_date'],
+                        end_date=request.POST['end_date'],
+                        member=member)
+                    if room_form.is_valid():
+                        # Put the booking in the database as a hold and redirect the user to finish it
+                        booking_record = BookingRecord(
+                            member=room_form.cleaned_data.get('member'),
+                            start_date=room_form.cleaned_data.get('start_date'),
+                            end_date=room_form.cleaned_data.get('end_date'),
+                            member_in_attendance=None,
+                            cost=100, #stub!
+                            payment_status='',
+                            status=BookingRecord.BookingRecordStatus.IN_PROGRESS
+                        )
+                        booking_record.save()
+                        rooms = room_form.cleaned_data.get('room_selection')
+                        #rooms = config.Room.objects.filter(room_number__in=room_form.cleaned_data.get('room_selection'))
+                        booking_record.rooms.set(rooms)
+                    # Preset the date values on the date form for consistency
+                    start_date = room_form.data.get("start_date")
+                    end_date = room_form.data.get("end_date")
+                    date_form = BookingDateRangeForm(initial={
+                        "start_date": start_date,
+                        'end_date': end_date,
+                    })
+                else: #date form is returned
+                    date_form = BookingDateRangeForm(request.POST)
+                    if date_form.is_valid():
+                        start_date = date_form.cleaned_data.get("start_date")
+                        end_date = date_form.cleaned_data.get("end_date")
+                        room_form = BookingRoomChoosingForm(start_date=start_date, end_date=end_date, member=member)
             else:
                 date_form = BookingDateRangeForm()
 
