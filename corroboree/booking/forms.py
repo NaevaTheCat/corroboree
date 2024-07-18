@@ -7,6 +7,7 @@ import datetime
 
 from corroboree.config import models as config
 from corroboree.booking.models import BookingRecord
+from corroboree.booking.logic import check_season_rules
 
 
 # TODO round to week chunks
@@ -119,3 +120,9 @@ class BookingRoomChoosingForm(forms.Form):
             raise forms.ValidationError(
                 'You must select at least one room'
             )
+        check_season_rules(
+            member=cleaned_data.get('member'),
+            start_date=cleaned_data.get('start_date'),
+            end_date=cleaned_data.get('end_date'),
+            rooms=room_selection,
+        )
