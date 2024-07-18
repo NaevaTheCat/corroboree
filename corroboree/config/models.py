@@ -54,6 +54,7 @@ class Config(ClusterableModel):
                             FieldPanel("bunk_beds"),
                         ]),
                     ]),
+        InlinePanel('seasons', label='Seasons'),
     ]
 
     def clean(self):
@@ -219,15 +220,27 @@ class Season(ClusterableModel):
             return
         # compare like-kinded seasons
         if self.season_is_peak:
-            other_seasons = self.config.seasons.filter(season_is_peak=True)
+            other_seasons = self.config.seasons.filter(season_is_peak=True).exclude(pk=self.pk)
         else:
-            other_seasons = self.config.seasons.filter(season_is_peak=False)
+            other_seasons = self.config.seasons.filter(season_is_peak=False).exclude(pk=self.pk)
         this_start = self.start_month
         this_end = self.end_month
-        for s in other_seasons:
-            # do seasons overlap
-            if s.start_month <= this_end or s.end_month >= this_start:
-                raise ValidationError("This season shares months with %s" % s.__str__())
+        # need to test the 4 permutations of whether seasons wrap around the year easy to test not overlap
+        if this_end >= this_start:
+            for s in other_seasons:
+                if s.end_month >= s.start_month:
+                    if not(this_end < s.start_month or s.end_month < this_start):
+                        raise ValidationError("This season shares months with %s" % s)
+                else:
+                    if not (this_start > s.end_month or this_end < s.start_month):
+                        raise ValidationError("This season shares months with %s" % s)
+        else:
+            for s in other_seasons:
+                if s.end_month >= s.start_month:
+                    if not(this_end < s.start_month and this_start > s.end_month):
+                        raise ValidationError("This season shares months with %s" % s)
+                else:
+                    raise ValidationError("This season shares months with %s" % s)
 
 
 @register_snippet
