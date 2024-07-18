@@ -115,7 +115,7 @@ class FamilyMember(ClusterableModel):
         if not hasattr(self, 'primary_shareholder'):
             return
         maximum_family_members = self.primary_shareholder.config.maximum_family_members
-        if self.primary_shareholder.family.count() >= maximum_family_members:
+        if self.primary_shareholder.family.exclude(pk=self.pk).count() >= maximum_family_members:
             raise ValidationError("Cannot add more than %s family members" % str(maximum_family_members))
 
 
@@ -281,7 +281,9 @@ class BookingType(ClusterableModel):
         if not hasattr(self, 'config') or not hasattr(self, 'season_active'):
             return
         # ensure unique priorities
-        similar_priority_bookings = self.season_active.booking_types.filter(priority_rank=self.priority_rank)
+        similar_priority_bookings = self.season_active.booking_types.filter(priority_rank=self.priority_rank).exclude(
+            pk=self.pk
+        )
         if similar_priority_bookings.count() > 0:
             raise ValidationError(
                 "Overlapping priority with BookingType: %s" % similar_priority_bookings.get().booking_type_name)
