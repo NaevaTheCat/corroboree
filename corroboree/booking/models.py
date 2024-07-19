@@ -129,3 +129,32 @@ class BookingPageUserSummary(Page):
 
 class BookingCalendar(Page):
     pass
+
+
+def calculate_booking_cart():
+    pass
+
+
+def bookings_for_member_in_range(member: config.Member, start_date: datetime.date, end_date: datetime.date):
+    """Given a member and a date range returns bookings for that member within that date range (including partially)"""
+    bookings = member.bookings.exclude(end_date__lte=start_date).exclude(start_date__gte=end_date)
+    return bookings
+
+
+def dates_to_weeks(start_date: datetime.date, end_date: datetime.date, week_start_day=6):
+    """For a date range and day of week return the number of weeks and surrounding 'spare' days
+
+    Using datetime weekday ints monday=0 sunday=6.
+    """
+    start_weekday = start_date.weekday()
+    end_weekday = end_date.weekday()
+    leading_days = (week_start_day - start_weekday) % 7
+    trailing_days = (7 - (week_start_day - end_weekday)) % 7
+    from_week = start_date + datetime.timedelta(days=leading_days)
+    till_week = end_date - datetime.timedelta(days=trailing_days)
+    weeks = int((till_week - from_week).days / 7)
+    return leading_days, weeks, trailing_days
+
+
+def get_booking_types_by_priority(start):
+    pass

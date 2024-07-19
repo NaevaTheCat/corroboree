@@ -1,5 +1,7 @@
+import datetime
+
 from django.db import models
-from django.db.models import F
+from django.db.models import F, Q
 from django import forms
 
 from django.core.exceptions import ValidationError
@@ -287,3 +289,21 @@ class BookingType(ClusterableModel):
         if similar_priority_bookings.count() > 0:
             raise ValidationError(
                 "Overlapping priority with BookingType: %s" % similar_priority_bookings.get().booking_type_name)
+
+
+def seasons_in_date_range(conf: Config, start_date: datetime.date, end_date: datetime.date):
+    """Returns a Queryset of seasons that are active during any part of a date range"""
+    start_month = start_date.month
+    end_month = end_date.month
+    # given months can wrap need to capture the 4 cases of comparison
+    if start_month <= end_month:
+        seasons = conf.seasons.exclude(
+            Q(start_month__lte=F('end_month')) & (Q(start_month__gt=end_month) | Q(end_month__lt=start_month))
+        ).exclude(
+            Q(start_month__gt=F('end_month')) & (Q(end_month__lt=start_month) & Q(start_month__gt=end_month))
+        )
+    else:
+        seasons = conf.seasons.exclude(
+            Q(start_month__lte=F('end_month')) & (Q(start_month__gt=end_month) & Q(end_month__lt=start_month))
+        )
+    return seasons
