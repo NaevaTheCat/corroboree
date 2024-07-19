@@ -1,6 +1,6 @@
 from django import forms
 from django.core.exceptions import ValidationError
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MinValueValidator
 
 from wagtail.admin import widgets
 
@@ -40,7 +40,7 @@ class BookingDateRangeForm(forms.Form):
         cleaned_data = super().clean()
         start_date = cleaned_data.get("start_date")
         end_date = cleaned_data.get("end_date")
-        today = datetime.date.today()
+        last_sunday = last_weekday_date(datetime.date.today(), 6)
         max_weeks_till_booking = config.Config.objects.get().max_weeks_till_booking
         max_weeks_ahead_start = datetime.timedelta(
             weeks=max_weeks_till_booking
@@ -49,7 +49,7 @@ class BookingDateRangeForm(forms.Form):
             weeks=(1 + max_weeks_till_booking)
         )
         if start_date and end_date:
-            if start_date > today + max_weeks_ahead_start:
+            if start_date > last_sunday + max_weeks_ahead_start:
                 raise forms.ValidationError(
                     "Start date is more than %s weeks ahead" % max_weeks_till_booking
                 )
@@ -57,7 +57,7 @@ class BookingDateRangeForm(forms.Form):
                 raise forms.ValidationError(
                     "End date must be after start date"
                 )
-            if end_date > today + max_weeks_ahead_end:
+            if end_date > last_sunday + max_weeks_ahead_end:
                 raise forms.ValidationError(
                     "End date is more than %s weeks ahead" % (max_weeks_till_booking + 1)
                 )
@@ -114,6 +114,7 @@ class BookingRoomChoosingForm(forms.Form):
             self.fields["start_date"].initial = start_date
             self.fields["end_date"].initial = end_date
             self.fields["member"].initial = member
+
     def clean(self):
         cleaned_data = super().clean()
         room_selection = cleaned_data.get('room_selection')
@@ -130,7 +131,7 @@ class BookingRoomChoosingForm(forms.Form):
 
 
 def check_season_rules(member: config.Member, start_date: datetime.date, end_date: datetime.date, rooms: [config.Room]):
-    conf = config.Config.objects.get() # only valid for single config
+    conf = config.Config.objects.get()  # only valid for single config
     for start, end in date_range_to_month_ranges(start_date, end_date):
         overlapping_bookings = bookings_for_member_in_range(member, start, end)
         occupancy_array = room_occupancy_array(start, end, rooms, overlapping_bookings)
@@ -141,7 +142,7 @@ def check_season_rules(member: config.Member, start_date: datetime.date, end_dat
         else:
             season_in_month = season_in_month.filter(season_is_peak=True).first()
         sum_rooms = []
-        for day in range(0,len(occupancy_array[0])):
+        for day in range(0, len(occupancy_array[0])):
             sum_rooms.append(sum([booked_rooms[day] for booked_rooms in occupancy_array]))
             if season_in_month.max_monthly_simultaneous_rooms is not None:
                 # test the number of max rooms
@@ -162,6 +163,13 @@ def check_season_rules(member: config.Member, start_date: datetime.date, end_dat
                             month=start.strftime('%B')
                         )
                     )
+
+
+def last_weekday_date(date: datetime.date, weekday=6):
+    """Given a date and weekday, return the date of the last weekday (datetime ints [0-6])"""
+    date_day = date.weekday()
+    delta = datetime.timedelta((7 - (weekday - date_day)) % 7)
+    return date - delta
 
 
 def date_range_to_month_ranges(start: datetime.date, end: datetime.date):
@@ -196,7 +204,7 @@ def room_occupancy_array(start_date: datetime.date, end_date: datetime.date, roo
     array.append([len(rooms)] * length)
     for this_booking in other_bookings:
         num_rooms = this_booking.rooms.all().count()
-        # pad a list with the days vacant at start or end so we know the rooms on each day
+        # pad a list with the days vacant at start or end, so we know the rooms on each day
         start_delta = max(0, (this_booking.start_date - start_date).days)
         end_delta = max(0, (end_date - this_booking.end_date).days)
         array.append([0] * start_delta + [num_rooms] * (length - (start_delta + end_delta)) + [0] * end_delta)
