@@ -6,7 +6,6 @@ from wagtail.admin import widgets
 
 import datetime
 
-from corroboree.config.models import seasons_in_date_range
 from corroboree.config import models as config
 from corroboree.booking.models import BookingRecord, bookings_for_member_in_range
 
@@ -135,7 +134,7 @@ def check_season_rules(member: config.Member, start_date: datetime.date, end_dat
     for start, end in date_range_to_month_ranges(start_date, end_date):
         overlapping_bookings = bookings_for_member_in_range(member, start, end)
         occupancy_array = room_occupancy_array(start, end, rooms, overlapping_bookings)
-        season_in_month = seasons_in_date_range(conf, start, end)
+        season_in_month = conf.seasons_in_date_range(start, end)
         # account for peak seasons
         if season_in_month.count() == 1:
             season_in_month = season_in_month.first()

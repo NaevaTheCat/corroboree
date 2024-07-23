@@ -9,6 +9,7 @@ from wagtail.admin.panels import FieldPanel
 from wagtail.snippets.models import register_snippet
 
 import datetime
+from datetime import date, datetime, timedelta
 
 from corroboree.config import models as config
 
@@ -116,7 +117,7 @@ class BookingPageUserSummary(Page):
         context = super().get_context(request)
         if request.user.is_authenticated:
             member = request.user.member
-            today = datetime.datetime.today()
+            today = datetime.today()
             member_bookings = BookingRecord.objects.filter(
                 end_date__gt=today,
                 member__exact=member,
@@ -135,13 +136,13 @@ def calculate_booking_cart():
     pass
 
 
-def bookings_for_member_in_range(member: config.Member, start_date: datetime.date, end_date: datetime.date):
+def bookings_for_member_in_range(member: config.Member, start_date: date, end_date: date):
     """Given a member and a date range returns bookings for that member within that date range (including partially)"""
     bookings = member.bookings.exclude(end_date__lte=start_date).exclude(start_date__gte=end_date)
     return bookings
 
 
-def dates_to_weeks(start_date: datetime.date, end_date: datetime.date, week_start_day=6):
+def dates_to_weeks(start_date: date, end_date: date, week_start_day=6) -> (int, int, int):
     """For a date range and day of week return the number of weeks and surrounding 'spare' days
 
     Using datetime weekday ints monday=0 sunday=6.

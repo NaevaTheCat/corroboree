@@ -59,6 +59,23 @@ class Config(ClusterableModel):
         InlinePanel('seasons', label='Seasons'),
     ]
 
+    def seasons_in_date_range(self, start_date: datetime.date, end_date: datetime.date):
+        """Returns a Queryset of seasons that are active during any part of a date range"""
+        start_month = start_date.month
+        end_month = end_date.month
+        # given months can wrap need to capture the 4 cases of comparison
+        if start_month <= end_month:
+            seasons = self.seasons.exclude(
+                Q(start_month__lte=F('end_month')) & (Q(start_month__gt=end_month) | Q(end_month__lt=start_month))
+            ).exclude(
+                Q(start_month__gt=F('end_month')) & (Q(end_month__lt=start_month) & Q(start_month__gt=end_month))
+            )
+        else:
+            seasons = self.seasons.exclude(
+                Q(start_month__lte=F('end_month')) & (Q(start_month__gt=end_month) & Q(end_month__lt=start_month))
+            )
+        return seasons
+
     def clean(self):
         validate_only_one_instance(self)
 
@@ -289,21 +306,3 @@ class BookingType(ClusterableModel):
         if similar_priority_bookings.count() > 0:
             raise ValidationError(
                 "Overlapping priority with BookingType: %s" % similar_priority_bookings.get().booking_type_name)
-
-
-def seasons_in_date_range(conf: Config, start_date: datetime.date, end_date: datetime.date):
-    """Returns a Queryset of seasons that are active during any part of a date range"""
-    start_month = start_date.month
-    end_month = end_date.month
-    # given months can wrap need to capture the 4 cases of comparison
-    if start_month <= end_month:
-        seasons = conf.seasons.exclude(
-            Q(start_month__lte=F('end_month')) & (Q(start_month__gt=end_month) | Q(end_month__lt=start_month))
-        ).exclude(
-            Q(start_month__gt=F('end_month')) & (Q(end_month__lt=start_month) & Q(start_month__gt=end_month))
-        )
-    else:
-        seasons = conf.seasons.exclude(
-            Q(start_month__lte=F('end_month')) & (Q(start_month__gt=end_month) & Q(end_month__lt=start_month))
-        )
-    return seasons
