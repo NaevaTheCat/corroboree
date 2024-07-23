@@ -132,7 +132,10 @@ class BookingCalendar(Page):
     pass
 
 
-def calculate_booking_cart():
+def calculate_booking_cart(conf: config.Config, booking_record: BookingRecord):
+    booking_types = get_booking_types(conf, booking_record.start_date, booking_record.end_date)
+    for day in booking_types:
+
     pass
 
 
@@ -157,5 +160,37 @@ def dates_to_weeks(start_date: date, end_date: date, week_start_day=6) -> (int, 
     return leading_days, weeks, trailing_days
 
 
-def get_booking_types_by_priority(start):
-    pass
+def get_booking_types(conf: config.Config, start_date: date, end_date: date):
+    """Returns a dictionary of date-keyed booking types with dates matching either a week start or a 'spare' day
+
+    Assumes that a week has a weekly booking type. Will not return daily bookings for week-equivalent dates"""
+    leading_days, weeks, trailing_days = dates_to_weeks(start_date, end_date)
+    seasons = list(conf.seasons_in_date_range(start_date, end_date))
+    leading_dates = [start_date + timedelta(days=x) for x in range(leading_days)]
+    week_dates = [start_date + timedelta(days=leading_days + x*7) for x in range(weeks)]
+    trailing_dates = [start_date + timedelta(days=7*weeks + leading_days + x) for x in range(trailing_days)]
+    booking_types = {}
+    for day in leading_dates:
+        season_on_day = seasons_to_season_on_day(seasons, day)
+        booking_types[day] = season_on_day.booking_types.exclude(is_full_week_only=True)  # This is a single day
+    for week_start in week_dates:
+        season_on_day = seasons_to_season_on_day(seasons, week_start)
+        booking_types[week_start] = season_on_day.booking_types.filter(is_full_week_only=True)  # Only the weekly ones
+    for day in trailing_dates:
+        season_on_day = seasons_to_season_on_day(seasons, day)
+        booking_types[day] = season_on_day.booking_types.exclude(is_full_week_only=True)
+    return booking_types
+
+
+def seasons_to_season_on_day(seasons: [config.Season], day: date) -> config.Season:
+    """Take a list of seasons and return the single season active on the day.
+
+    Helper function to avoid multiple database hits when querying bookings"""
+    season_on_day = [s for s in seasons if s.date_is_in_season(day)]
+    if len(season_on_day) == 1:
+        season_on_day = season_on_day[0]
+    elif len(season_on_day) == 2:
+        season_on_day = [s for s in season_on_day if s.season_is_peak][0]  # get only the peak season
+    else:
+        raise ValueError('Somehow multiple seasons apply?: %s' % season_on_day)
+    return season_on_day

@@ -171,7 +171,7 @@ def last_weekday_date(date: datetime.date, weekday=6):
     return date - delta
 
 
-def date_range_to_month_ranges(start: datetime.date, end: datetime.date):
+def date_range_to_month_ranges(start: datetime.date, end: datetime.date) -> [(datetime.date, datetime.date)]:
     """Splits a start and end date into ranges by month
 
     Used for checking season rules"""

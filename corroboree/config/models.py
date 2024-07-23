@@ -233,6 +233,13 @@ class Season(ClusterableModel):
     def __str__(self):
         return self.season_name
 
+    def date_is_in_season(self, date: datetime.date) -> bool:
+        month = date.month
+        if self.start_month <= self.end_month:
+            return True if self.start_month <= month <= self.end_month else False
+        else:
+            return True if self.start_month <= month or month <= self.end_month else False
+
     def clean(self):
         # make sure correct stuff is set
         if not hasattr(self, 'config') or self.start_month is None or self.end_month is None:
