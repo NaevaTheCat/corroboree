@@ -1,15 +1,16 @@
-from django.db import models
-from django.shortcuts import render, redirect
-from django.views.decorators.csrf import csrf_protect
-
-from wagtail.models import Page
-from wagtail.fields import RichTextField
-from wagtail.admin.panels import FieldPanel
-
-from wagtail.snippets.models import register_snippet
-
 import datetime
 from datetime import date, datetime, timedelta
+
+from django.db import models
+from django.db.models import Sum
+from django.forms import formset_factory
+from django.shortcuts import render, redirect
+from django.views.decorators.csrf import csrf_protect
+from wagtail.admin.panels import FieldPanel, MultiFieldPanel
+from wagtail.contrib.routable_page.models import RoutablePageMixin, path
+from wagtail.fields import RichTextField
+from wagtail.models import Page
+from wagtail.snippets.models import register_snippet
 
 from corroboree.config import models as config
 
@@ -117,28 +118,106 @@ class BookingPage(Page):
 
 
 @csrf_protect  # superstitious? might've fixed a bug once
-class BookingPageUserSummary(Page):
-    intro = RichTextField(blank=True)
+class BookingPageUserSummary(RoutablePageMixin, Page):
+    in_progress_text = RichTextField(blank=True,
+                                   help_text='Text to introduce bookings that need to be completed if any exit')
+    submitted_text = RichTextField(blank=True,
+                                   help_text='Text to introduce bookings that have been submitted but not confirmed/paid')
+    upcoming_text = RichTextField(blank=True,
+                                  help_text='Text to introduce upcoming bookings if any exist')
+    edit_text = RichTextField(blank=True,
+                              help_text='Text to display when editing a booking')
+    not_found_text = RichTextField(blank=True,
+                                      help_text='Text to display when linked booking is not theirs or editable')
     no_bookings_text = RichTextField(blank=True)
 
     content_panels = Page.content_panels + [
-        FieldPanel('intro'),
-        FieldPanel('no_bookings_text'),
+        MultiFieldPanel(heading='Booking Summary Page', children=(
+            FieldPanel('no_bookings_text'),
+            FieldPanel('in_progress_text'),
+            FieldPanel('submitted_text'),
+            FieldPanel('upcoming_text'),
+        )),
+        MultiFieldPanel(heading='Booking Edit Page', children=(
+            FieldPanel('edit_text'),
+            FieldPanel('not_found_text'),
+        )),
     ]
 
-    def get_context(self, request):
-        context = super().get_context(request)
+    @path('')
+    def booking_index_page(self, request):
         if request.user.is_authenticated:
             member = request.user.member
-            today = datetime.today()
-            member_bookings = BookingRecord.objects.filter(
+            today = date.today()
+            bookings = BookingRecord.objects.filter(member__exact=member)
+            upcoming_bookings = bookings.filter(
                 end_date__gt=today,
-                member__exact=member,
-            ).exclude(
-                status__exact=BookingRecord.BookingRecordStatus.CANCELLED,
+                status__exact=BookingRecord.BookingRecordStatus.FINALISED
             ).order_by('start_date')
-            context['member_bookings'] = member_bookings
-        return context
+            in_progress_bookings = bookings.filter(
+                status__exact=BookingRecord.BookingRecordStatus.IN_PROGRESS
+            ).order_by('start_date')
+            submitted_bookings = bookings.filter(
+                status__exact=BookingRecord.BookingRecordStatus.SUBMITTED
+            ).order_by('start_date')
+            return self.render(request, context_overrides={
+                'title': 'My Bookings',
+                'upcoming_bookings': upcoming_bookings,
+                'in_progress_bookings': in_progress_bookings,
+                'submitted_bookings': submitted_bookings,
+            })
+
+    @path('<int:booking_id>/')
+    def booking_edit_page(self, request, booking_id=None):
+        from corroboree.booking.forms import BookingRecordMemberInAttendanceForm, GuestForm
+        if request.user.is_authenticated:
+            member = request.user.member
+            if booking_id is None:
+                booking_id = BookingRecord.objects.filter(member=member).order_by('last_updated').first()
+            # Try find the booking, but make sure it's ours and editable!
+            try:
+                booking = BookingRecord.objects.get(
+                    pk=booking_id,
+                    member=member,
+                    status=BookingRecord.BookingRecordStatus.IN_PROGRESS
+                )
+            except BookingRecord.DoesNotExist:  # Due to using PK no need to catch multiple objects
+                booking = None
+                return self.render(request, template='booking/booking_not_found.html')
+            # make a form
+            member_in_attendance_form = BookingRecordMemberInAttendanceForm()
+            max_attendees = booking.rooms.aggregate(max_occupants=Sum('room_type__max_occupants'))['max_occupants']
+            GuestFormSet = formset_factory(GuestForm, extra=max_attendees - 1)
+            if request.method == 'POST':
+                guest_forms = GuestFormSet(request.POST)
+                member_in_attendance_form = BookingRecordMemberInAttendanceForm(request.POST)
+                if guest_forms.is_valid() and member_in_attendance_form.is_valid():
+                    guest_list = []
+                    for guest in guest_forms:
+                        guest_list.append({
+                            'first_name': guest.cleaned_data.get('first_name', ''),
+                            'last_name': guest.cleaned_data.get('last_name', ''),
+                            'email_contact': guest.cleaned_data.get('email', ''),
+                        })
+                    other_attendees = {'other_attendees': guest_list}
+                    member_in_attendance = member_in_attendance_form.cleaned_data['member_in_attendance']
+                    booking.member_in_attendance = member_in_attendance
+                    booking.other_attendees = other_attendees
+                    booking.status = BookingRecord.BookingRecordStatus.SUBMITTED
+                    booking.save()
+                    return redirect('/my-bookings/')
+                    # TODO: payment email and stuff
+            else:
+                guest_forms = GuestFormSet()
+            return self.render(request,
+                               context_overrides={
+                                   'title': 'Edit Booking',
+                                   'booking': booking,
+                                   'member_in_attendance_form': member_in_attendance_form,
+                                   'guest_forms': guest_forms,
+                               },
+                               template='booking/edit_booking.html',
+                               )
 
 
 class BookingCalendar(Page):

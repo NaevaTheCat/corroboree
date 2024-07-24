@@ -1,16 +1,14 @@
 import datetime
 
-from django.db import models
-from django.db.models import F, Q
 from django import forms
-
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.db import models
+from django.db.models import F, Q
+from modelcluster.fields import ParentalKey, ParentalManyToManyField
+from modelcluster.models import ClusterableModel
 from wagtail.admin.panels import FieldPanel, FieldRowPanel, InlinePanel
 from wagtail.snippets.models import register_snippet
-
-from modelcluster.models import ClusterableModel
-from modelcluster.fields import ParentalKey, ParentalManyToManyField
 
 
 # Validators

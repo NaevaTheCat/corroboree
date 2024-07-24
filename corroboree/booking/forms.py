@@ -1,13 +1,12 @@
+import datetime
+
 from django import forms
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
-
 from wagtail.admin import widgets
 
-import datetime
-
-from corroboree.config import models as config
 from corroboree.booking.models import BookingRecord, bookings_for_member_in_range, get_booking_types
+from corroboree.config import models as config
 
 
 # TODO round to week chunks
@@ -142,6 +141,22 @@ class BookingRoomChoosingForm(forms.Form):
             end_date=cleaned_data.get('end_date'),
             rooms=room_selection,
         )
+
+
+class BookingRecordMemberInAttendanceForm(forms.Form):
+    member_in_attendance = forms.ModelChoiceField(queryset=config.FamilyMember.objects.all())
+
+    def __init__(self, *args, member=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if member is not None:
+            queryset = config.Member.objects.get(pk=member).family.all()
+            self.fields['member_in_attendance'].queryset = queryset
+
+
+class GuestForm(forms.Form):
+    first_name = forms.CharField(max_length=64)
+    last_name = forms.CharField(max_length=64)
+    email = forms.EmailField(label='Contact Email')
 
 
 def check_season_rules(member: config.Member, start_date: datetime.date, end_date: datetime.date, rooms: [config.Room]):

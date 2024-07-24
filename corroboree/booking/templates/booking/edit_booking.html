@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% load wagtailcore_tags %}
+
+{% block content %}
+
+    {{ page.edit_text | richtext }}
+
+    <div id="table">
+	<table border=1>
+	<thead>
+	    <tr>
+		<th>Start Date</th>
+		<th>End Date</th>
+		<th>Rooms</th>
+		<th>Cost</th>
+	    </tr>
+	</thead>
+	<tbody>
+	    <tr>
+		<td>{{booking.start_date}}</td>
+		<td>{{booking.end_date}}</td>
+		<td>
+		    {% for room in booking.rooms.all %}
+			{{ room.room_number }}{% if not forloop.last %}, {% endif %}
+		    {% endfor %}
+		</td>
+		<td>${{booking.cost}}</td>
+	    </tr>
+	</tbody>
+	</table>
+    </div>
+
+    <form action="." method="POST">
+	{% csrf_token %}
+	{{ member_in_attendance_form }}
+	{{ guest_forms.management_form }}
+	{% for form in guest_forms %}
+	    <div class="guest-form">
+		<p> Guest {{ forloop.counter }} details:</p>
+		<table>
+		    {{ form.as_table }}
+		</table>
+	    </div>
+	{% endfor %}
+	<input type="submit" value="Submit Booking">
+    </form>
+
+{% endblock %}

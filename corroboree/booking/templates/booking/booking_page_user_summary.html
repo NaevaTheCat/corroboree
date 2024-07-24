@@ -3,8 +3,43 @@
 {% load wagtailcore_tags %}
 
 {% block content %}
-    {% if member_bookings %}
-	{{ page.intro | richtext }}
+    {% if in_progress_bookings %}
+	{{ page.in_progress_text | richtext }}
+	<div id="table">
+	    <table border=0>
+		<thead>
+		    <tr>
+			<th>Start date</th>
+			<th>End date</th>
+			<th>Rooms</th>
+			<th>Status</th>
+			<th>Edit Booking</th>
+		    </tr>
+		</thead>
+		<tbody>
+		    {% for booking in in_progress_bookings %}
+			<tr>
+			    <td>{{ booking.start_date }}</td>
+			    
+			    <td>{{ booking.end_date }}</td>
+			    
+			    <td>
+				{% for room in booking.rooms.all %}
+				    {{ room.room_number }}{% if not forloop.last %}, {% endif %}
+				{% endfor %}
+			    </td>
+			    
+			    <td>{{ booking.status }}</td>
+			    
+			    <td><a href="{% pageurl page %}{{ booking.pk }}">Edit</a>
+			</tr>
+		    {% endfor %}
+		</tbody>
+	    </table>
+	</div>
+    {% endif %}
+    {% if submitted_bookings %}
+	{{ page.submitted_text | richtext }}
 	<div id="table">
 	    <table border=0>
 		<thead>
@@ -16,7 +51,7 @@
 		    </tr>
 		</thead>
 		<tbody>
-		    {% for booking in member_bookings %}
+		    {% for booking in submitted_bookings %}
 			<tr>
 			    <td>{{ booking.start_date }}</td>
 			    
@@ -34,9 +69,41 @@
 		</tbody>
 	    </table>
 	</div>
-    {% else %}
-	
-	{{ page.no_bookings_text | richtext }}
+    {% endif %}
+    {% if upcoming_bookings%}
+	<div id="table">
+	    <table border=0>
+		<thead>
+		    <tr>
+			<th>Start date</th>
+			<th>End date</th>
+			<th>Rooms</th>
+			<th>Status</th>
+		    </tr>
+		</thead>
+		<tbody>
+		    {% for booking in upcoming_bookings %}
+			<tr>
+			    <td>{{ booking.start_date }}</td>
+			    
+			    <td>{{ booking.end_date }}</td>
+			    
+			    <td>
+				{% for room in booking.rooms.all %}
+				    {{ room.room_number }}{% if not forloop.last %}, {% endif %}
+				{% endfor %}
+			    </td>
+			    
+			    <td>{{ booking.status }}</td>
+			</tr>
+		    {% endfor %}
+		</tbody>
+	    </table>
+	</div>
+    {% endif %}
+    {% if not in_progress_bookings and not submitted_bookings and not upcoming_bookings %}
 
+	{{ page.no_bookings_text | richtext }}
+	
     {% endif %}
 {% endblock %}
