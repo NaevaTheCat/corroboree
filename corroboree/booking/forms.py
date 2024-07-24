@@ -7,7 +7,7 @@ from wagtail.admin import widgets
 import datetime
 
 from corroboree.config import models as config
-from corroboree.booking.models import BookingRecord, bookings_for_member_in_range
+from corroboree.booking.models import BookingRecord, bookings_for_member_in_range, get_booking_types
 
 
 # TODO round to week chunks
@@ -109,6 +109,20 @@ class BookingRoomChoosingForm(forms.Form):
             )
             booked_room_ids = overlapping_bookings.values_list('rooms__room_number', flat=True)
             available_rooms = config.Room.objects.exclude(pk__in=list(booked_room_ids)) # breaks on None, which should be impossible, if fed the raw queryset.
+            possible_booking_types = get_booking_types(conf=config.Config.objects.get(), start_date=start_date, end_date=end_date)
+            banned_rooms = config.Room.objects.none()  # empty queryset we will build up to filter available rooms with
+            for day in possible_booking_types:
+                daily_banned_rooms = config.Room.objects.all()
+                if possible_booking_types[day].count() == 0:
+                    # No bookings possible on a day/week during range i.e. all rooms are banned and we can stop looking
+                    daily_banned_rooms = config.Room.objects.all()
+                else:
+                    for booking_type in possible_booking_types[day]:
+                        this_banned_rooms = booking_type.banned_rooms.all()
+                        # Set union all rooms and banned rooms. Only leaves rooms that aren't available in any way
+                        daily_banned_rooms = daily_banned_rooms & this_banned_rooms
+                banned_rooms = banned_rooms | daily_banned_rooms
+            available_rooms = config.Room.objects.exclude(pk__in=list(booked_room_ids)).exclude(pk__in=banned_rooms)
             self.fields["room_selection"].queryset = available_rooms
             self.fields["start_date"].initial = start_date
             self.fields["end_date"].initial = end_date

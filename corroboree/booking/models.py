@@ -154,14 +154,14 @@ def dates_to_weeks(start_date: date, end_date: date, week_start_day=6) -> (int, 
     end_weekday = end_date.weekday()
     leading_days = (week_start_day - start_weekday) % 7
     trailing_days = (7 - (week_start_day - end_weekday)) % 7
-    from_week = start_date + datetime.timedelta(days=leading_days)
-    till_week = end_date - datetime.timedelta(days=trailing_days)
+    from_week = start_date + timedelta(days=leading_days)
+    till_week = end_date - timedelta(days=trailing_days)
     weeks = int((till_week - from_week).days / 7)
     return leading_days, weeks, trailing_days
 
 
 def get_booking_types(conf: config.Config, start_date: date, end_date: date):
-    """Returns a dictionary of date-keyed booking types with dates matching either a week start or a 'spare' day
+    """Returns a dictionary of date-keyed booking type querysets with dates matching either a week start or a 'spare' day
 
     Assumes that a week has a weekly booking type. Will not return daily bookings for week-equivalent dates"""
     leading_days, weeks, trailing_days = dates_to_weeks(start_date, end_date)
