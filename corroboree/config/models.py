@@ -255,7 +255,7 @@ class Season(ClusterableModel):
         if this_end >= this_start:
             for s in other_seasons:
                 if s.end_month >= s.start_month:
-                    if not(this_end < s.start_month or s.end_month < this_start):
+                    if not (this_end < s.start_month or s.end_month < this_start):
                         raise ValidationError("This season shares months with %s" % s)
                 else:
                     if not (this_start > s.end_month or this_end < s.start_month):
@@ -263,7 +263,7 @@ class Season(ClusterableModel):
         else:
             for s in other_seasons:
                 if s.end_month >= s.start_month:
-                    if not(this_end < s.start_month and this_start > s.end_month):
+                    if not (this_end < s.start_month and this_start > s.end_month):
                         raise ValidationError("This season shares months with %s" % s)
                 else:
                     raise ValidationError("This season shares months with %s" % s)

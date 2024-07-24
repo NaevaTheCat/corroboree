@@ -169,7 +169,7 @@ def check_season_rules(member: config.Member, start_date: datetime.date, end_dat
                         )
                     )
             if season_in_month.max_monthly_room_weeks is not None:
-                if sum(sum_rooms)/7 > season_in_month.max_monthly_room_weeks:
+                if sum(sum_rooms) / 7 > season_in_month.max_monthly_room_weeks:
                     raise ValidationError(
                         'This booking exceeds the {max} room-weeks limit for {season} during {month}'.format(
                             max=season_in_month.max_monthly_room_weeks,
@@ -193,9 +193,9 @@ def date_range_to_month_ranges(start: datetime.date, end: datetime.date) -> [(da
     result = []
     while True:
         if start.month == 12:
-            next_month = start.replace(year=start.year+1, month=1, day=1)
+            next_month = start.replace(year=start.year + 1, month=1, day=1)
         else:
-            next_month = start.replace(month=start.month+1, day=1)
+            next_month = start.replace(month=start.month + 1, day=1)
         if next_month > end:
             break
         result.append((start, last_day_of_month(start)))

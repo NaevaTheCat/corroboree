@@ -51,6 +51,7 @@ class BookingRecord(models.Model):
         self.cost = cost
         self.save()
 
+
 class BookingPage(Page):
     intro = RichTextField(blank=True)
     not_authorised_message = RichTextField(blank=True)
@@ -99,7 +100,7 @@ class BookingPage(Page):
                         "start_date": start_date,
                         'end_date': end_date,
                     })
-                else: #date form is returned
+                else:  # date form is returned
                     date_form = BookingDateRangeForm(request.POST)
                     if date_form.is_valid():
                         start_date = date_form.cleaned_data.get("start_date")
@@ -114,7 +115,8 @@ class BookingPage(Page):
                 "room_form": room_form,
             })
 
-@csrf_protect #superstitious? might've fixed a bug once
+
+@csrf_protect  # superstitious? might've fixed a bug once
 class BookingPageUserSummary(Page):
     intro = RichTextField(blank=True)
     no_bookings_text = RichTextField(blank=True)
@@ -171,8 +173,8 @@ def get_booking_types(conf: config.Config, start_date: date, end_date: date):
     leading_days, weeks, trailing_days = dates_to_weeks(start_date, end_date)
     seasons = list(conf.seasons_in_date_range(start_date, end_date))
     leading_dates = [start_date + timedelta(days=x) for x in range(leading_days)]
-    week_dates = [start_date + timedelta(days=leading_days + x*7) for x in range(weeks)]
-    trailing_dates = [start_date + timedelta(days=7*weeks + leading_days + x) for x in range(trailing_days)]
+    week_dates = [start_date + timedelta(days=leading_days + x * 7) for x in range(weeks)]
+    trailing_dates = [start_date + timedelta(days=7 * weeks + leading_days + x) for x in range(trailing_days)]
     booking_types = {}
     for day in leading_dates:
         season_on_day = seasons_to_season_on_day(seasons, day)
