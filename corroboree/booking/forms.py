@@ -108,8 +108,9 @@ class BookingRoomChoosingForm(forms.Form):
                 end_date__lte=start_date,
             )
             booked_room_ids = overlapping_bookings.values_list('rooms__room_number', flat=True)
-            available_rooms = config.Room.objects.exclude(pk__in=list(booked_room_ids)) # breaks on None, which should be impossible, if fed the raw queryset.
-            possible_booking_types = get_booking_types(conf=config.Config.objects.get(), start_date=start_date, end_date=end_date)
+            possible_booking_types = get_booking_types(conf=config.Config.objects.get(),
+                                                       start_date=start_date,
+                                                       end_date=end_date)
             banned_rooms = config.Room.objects.none()  # empty queryset we will build up to filter available rooms with
             for day in possible_booking_types:
                 daily_banned_rooms = config.Room.objects.all()

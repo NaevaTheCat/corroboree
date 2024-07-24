@@ -33,17 +33,27 @@ class BookingRecord(models.Model):
     start_date = models.DateField()
     end_date = models.DateField()
     rooms = models.ManyToManyField(config.Room)
-    member_in_attendance = models.ForeignKey(config.FamilyMember, on_delete=models.PROTECT, related_name="bookings", null=True)
+    member_in_attendance = models.ForeignKey(config.FamilyMember, on_delete=models.PROTECT, related_name="bookings",
+                                             null=True)
     other_attendees = models.JSONField(default=dict, blank=True)  # {{first:, last:, contact:}}
     cost = models.DecimalField(max_digits=8, decimal_places=2)
     payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus, blank=True)
     status = models.CharField(max_length=2, choices=BookingRecordStatus)
 
+    def calculate_booking_cart(self, conf: config.Config):
+        booking_types = get_booking_types(conf, self.start_date, self.end_date)
+        cost = 0
+        for day in booking_types:
+            # add the cost of the highest (smallest int) priority booking
+            cost += booking_types[day].exclude(
+                banned_rooms__in=self.rooms.all()).exclude(
+                minimum_rooms__gt=self.rooms.count()).order_by('priority_rank').first().rate
+        self.cost = cost
+        self.save()
 
 class BookingPage(Page):
     intro = RichTextField(blank=True)
     not_authorised_message = RichTextField(blank=True)
-
 
     content_panels = Page.content_panels + [
         FieldPanel("intro"),
@@ -63,8 +73,8 @@ class BookingPage(Page):
                 if 'room_form' in request.POST:
                     room_form = BookingRoomChoosingForm(
                         request.POST,
-                        start_date=request.POST['start_date'],
-                        end_date=request.POST['end_date'],
+                        start_date=date.fromisoformat(request.POST['start_date']),
+                        end_date=date.fromisoformat(request.POST['end_date']),
                         member=member)
                     if room_form.is_valid():
                         # Put the booking in the database as a hold and redirect the user to finish it
@@ -73,13 +83,14 @@ class BookingPage(Page):
                             start_date=room_form.cleaned_data.get('start_date'),
                             end_date=room_form.cleaned_data.get('end_date'),
                             member_in_attendance=None,
-                            cost=100, #stub!
+                            cost=0,  # stub!
                             payment_status='',
                             status=BookingRecord.BookingRecordStatus.IN_PROGRESS
                         )
                         booking_record.save()
                         rooms = room_form.cleaned_data.get('room_selection')
                         booking_record.rooms.set(rooms)
+                        booking_record.calculate_booking_cart(config.Config.objects.get())
                         return redirect('/my-bookings/%s' % booking_record.pk)
                     # Preset the date values on the date form for consistency
                     start_date = room_form.data.get("start_date")
@@ -129,13 +140,6 @@ class BookingPageUserSummary(Page):
 
 
 class BookingCalendar(Page):
-    pass
-
-
-def calculate_booking_cart(conf: config.Config, booking_record: BookingRecord):
-    booking_types = get_booking_types(conf, booking_record.start_date, booking_record.end_date)
-    for day in booking_types:
-
     pass
 
 
