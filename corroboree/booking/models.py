@@ -96,7 +96,7 @@ class BookingPage(Page):
                         rooms = room_form.cleaned_data.get('room_selection')
                         booking_record.rooms.set(rooms)
                         booking_record.calculate_booking_cart(config.Config.objects.get())
-                        return redirect('/my-bookings/%s' % booking_record.pk)
+                        return redirect('/my-bookings/edit/%s' % booking_record.pk)
                     # Preset the date values on the date form for consistency
                     start_date = room_form.data.get("start_date")
                     end_date = room_form.data.get("end_date")
@@ -170,7 +170,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 'submitted_bookings': submitted_bookings,
             })
 
-    @path('<int:booking_id>/')
+    @path('edit/<int:booking_id>/')
     def booking_edit_page(self, request, booking_id=None):
         from corroboree.booking.forms import BookingRecordMemberInAttendanceForm, GuestForm
         if request.user.is_authenticated:
