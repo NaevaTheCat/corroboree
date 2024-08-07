@@ -31,6 +31,7 @@ class BookingRecord(models.Model):
         PAID = "PD"
         FAILED = "FL"
         REFUNDED = "RF"
+        NOT_ISSUED = 'NI'
 
     member = models.ForeignKey(config.Member, on_delete=models.PROTECT, related_name="bookings")
     last_updated = models.DateTimeField(auto_now=True)
@@ -41,7 +42,7 @@ class BookingRecord(models.Model):
                                              null=True)
     other_attendees = models.JSONField(default=dict, blank=True)  # {{first:, last:, contact:}}
     cost = models.DecimalField(max_digits=8, decimal_places=2)
-    payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus, blank=True)
+    payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus, default=BookingRecordPaymentStatus.NOT_ISSUED)
     status = models.CharField(max_length=2, choices=BookingRecordStatus)
 
     def calculate_booking_cart(self, conf: config.Config):
@@ -89,7 +90,7 @@ class BookingPage(Page):
                             end_date=room_form.cleaned_data.get('end_date'),
                             member_in_attendance=None,
                             cost=0,  # stub!
-                            payment_status='',
+                            payment_status=BookingRecord.BookingRecordPaymentStatus.NOT_ISSUED,
                             status=BookingRecord.BookingRecordStatus.IN_PROGRESS
                         )
                         booking_record.save()
@@ -208,9 +209,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                     booking.other_attendees = other_attendees
                     booking.status = BookingRecord.BookingRecordStatus.SUBMITTED
                     booking.save()
-                    # send_confirmation_email(booking)
-                    return redirect('/my-bookings/')
-                    # TODO: payment email and stuff
+                    return redirect(self.url + 'pay/%s' % booking_id)
             else:
                 guest_forms = GuestFormSet()
             return self.render(request,
@@ -222,8 +221,30 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                                },
                                template='booking/edit_booking.html',
                                )
-
-
+    @path('pay/<int:booking_id>/')
+    def booking_payment_page(self, request, booking_id=None):
+        if request.user.is_authenticated:
+            member = request.user.member
+            if booking_id is None:
+                booking_id = BookingRecord.objects.filter(member=member).order_by('last_updated').first()
+            try:
+                booking = BookingRecord.objects.get(
+                    pk=booking_id,
+                    member=member,
+                    status=BookingRecord.BookingRecordStatus.SUBMITTED,
+                    payment_status=BookingRecord.BookingRecordPaymentStatus.NOT_ISSUED,  # Maybe need failed? if
+                    # that's even needed
+                )
+            except BookingRecord.DoesNotExist:  # Due to using PK no need to catch multiple objects
+                booking = None
+                return self.render(request, template='booking/booking_not_found.html')  # TODO: Mod template for url message
+            return self.render(request,
+                               context_overrides={
+                                   'title': 'Confirm and Pay',
+                                   'booking': booking,
+                               },
+                               template='booking/pay_booking.html',
+                               )
 class BookingCalendar(Page):
     pass
 
