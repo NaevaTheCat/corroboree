@@ -1,10 +1,13 @@
 import datetime
 from datetime import date, datetime, timedelta
 
+from django.core.mail import send_mail
 from django.db import models
 from django.db.models import Sum
 from django.forms import formset_factory
 from django.shortcuts import render, redirect
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 from django.views.decorators.csrf import csrf_protect
 from wagtail.admin.panels import FieldPanel, MultiFieldPanel
 from wagtail.contrib.routable_page.models import RoutablePageMixin, path
@@ -188,7 +191,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
             member_in_attendance_form = BookingRecordMemberInAttendanceForm()
             max_attendees = booking.rooms.aggregate(max_occupants=Sum('room_type__max_occupants'))['max_occupants']
             GuestFormSet = formset_factory(GuestForm, extra=max_attendees - 1)
-            if request.method == 'POST':
+            if request.method == 'POST':  # User has submitted the guest form
                 guest_forms = GuestFormSet(request.POST)
                 member_in_attendance_form = BookingRecordMemberInAttendanceForm(request.POST)
                 if guest_forms.is_valid() and member_in_attendance_form.is_valid():
@@ -205,6 +208,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                     booking.other_attendees = other_attendees
                     booking.status = BookingRecord.BookingRecordStatus.SUBMITTED
                     booking.save()
+                    # send_confirmation_email(booking)
                     return redirect('/my-bookings/')
                     # TODO: payment email and stuff
             else:
@@ -279,3 +283,22 @@ def seasons_to_season_on_day(seasons: [config.Season], day: date) -> config.Seas
     else:
         raise ValueError('Somehow multiple seasons apply?: %s' % season_on_day)
     return season_on_day
+
+
+def send_confirmation_email(booking: BookingRecord):  # TODO: do less in the template, more here in the context
+    """Format and send an email using a django template"""
+    subject = 'Neige Booking Confirmation: {start} - {end}'.format(
+        start=booking.start_date,
+        end=booking.end_date,
+    )
+    from_email = 'Neige <neige.email@example.com>'
+    to_email = booking.member.contact_email
+    html_message = render_to_string('email/confirmation_mail_template.html', {'booking': booking})
+    plain_message = strip_tags(html_message)
+    send_mail(
+        subject,
+        plain_message,
+        from_email,
+        [to_email],
+        html_message=html_message,
+    )

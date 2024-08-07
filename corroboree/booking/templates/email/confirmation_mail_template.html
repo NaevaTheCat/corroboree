@@ -1,0 +1,12 @@
+<h1> Booking Confirmation </h1>
+
+<p> Here is a summary of your upcoming booking:
+    Start date: {{ booking.start_date }}
+    End date: {{ booking.end_date }}
+    Rooms: {% for room in booking.rooms.all %}
+        - {{ room.room_number }}: {{room.room_type}}{% endfor %}
+    Member in attendance: {{ booking.member_in_attendance.first_name }} {{ booking.member_in_attendance.last_name }}
+    Guests:{% for guest in booking.other_attendees.other_attendees %}
+	- {{ guest.first_name }} {{ guest.last_name }}{% endfor %}
+    Cost: {{ booking.cost }}    
+</p>
