@@ -1,9 +1,29 @@
 {% extends "base.html" %}
 
 {% load wagtailcore_tags %}
+{% load booking_record_tags %}
 
 {% block content %}
-<h1> pay for booking: {{ booking }} </h1>
-
-<h2> paypal button goes here <h2>
+    <h1> pay for booking: {{ booking }} </h1>
+    <div class="booking-summary-table">
+	<table border=1>
+	    <thead>
+		<tr>
+		    <th>Start date</th>
+		    <th>End date</th>
+		    <th>Rooms</th>
+		    <th>Cost</th>
+		    <th>Member in Attendance</th>
+		    <th>Other Attendees</th>
+		</tr>
+	    </thead>
+	    <tbody>
+		<tr>
+		    {% render_booking_record booking 'FULL' %}
+		</tr>
+	    </tbody>
+	</table>
+    </div>
+    
+    <h2> paypal button goes here <h2>
 {% endblock %}

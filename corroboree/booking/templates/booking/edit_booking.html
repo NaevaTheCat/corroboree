@@ -1,12 +1,13 @@
 {% extends "base.html" %}
 
 {% load wagtailcore_tags %}
+{% load booking_record_tags %}
 
 {% block content %}
 
     {{ page.edit_text | richtext }}
 
-    <div id="table">
+    <div class='booking-summary-table'>
 	<table border=1>
 	<thead>
 	    <tr>
@@ -18,14 +19,7 @@
 	</thead>
 	<tbody>
 	    <tr>
-		<td>{{booking.start_date}}</td>
-		<td>{{booking.end_date}}</td>
-		<td>
-		    {% for room in booking.rooms.all %}
-			{{ room.room_number }}{% if not forloop.last %}, {% endif %}
-		    {% endfor %}
-		</td>
-		<td>${{booking.cost}}</td>
+		{% render_booking_record booking 'COST_SUMMARY' %}
 	    </tr>
 	</tbody>
 	</table>
