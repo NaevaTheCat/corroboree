@@ -196,14 +196,14 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 guest_forms = GuestFormSet(request.POST)
                 member_in_attendance_form = BookingRecordMemberInAttendanceForm(request.POST)
                 if guest_forms.is_valid() and member_in_attendance_form.is_valid():
-                    guest_list = []
-                    for guest in guest_forms:
-                        guest_list.append({
+                    guests = {}
+                    for idguest, guest in enumerate(guest_forms):
+                        guests['guest_%s' % idguest] = {
                             'first_name': guest.cleaned_data.get('first_name', ''),
                             'last_name': guest.cleaned_data.get('last_name', ''),
                             'email_contact': guest.cleaned_data.get('email', ''),
-                        })
-                    other_attendees = {'other_attendees': guest_list}
+                        }
+                    other_attendees = guests
                     member_in_attendance = member_in_attendance_form.cleaned_data['member_in_attendance']
                     booking.member_in_attendance = member_in_attendance
                     booking.other_attendees = other_attendees
