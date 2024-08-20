@@ -41,7 +41,7 @@ class BookingRecord(models.Model):
     member_in_attendance = models.ForeignKey(config.FamilyMember, on_delete=models.PROTECT, related_name="bookings",
                                              null=True)
     other_attendees = models.JSONField(default=dict, blank=True)  # {{first:, last:, contact:}}
-    cost = models.DecimalField(max_digits=8, decimal_places=2)
+    cost = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus, default=BookingRecordPaymentStatus.NOT_ISSUED)
     status = models.CharField(max_length=2, choices=BookingRecordStatus)
 
@@ -89,7 +89,7 @@ class BookingPage(Page):
                             start_date=room_form.cleaned_data.get('start_date'),
                             end_date=room_form.cleaned_data.get('end_date'),
                             member_in_attendance=None,
-                            cost=0,  # stub!
+                            cost=None,
                             payment_status=BookingRecord.BookingRecordPaymentStatus.NOT_ISSUED,
                             status=BookingRecord.BookingRecordStatus.IN_PROGRESS
                         )
