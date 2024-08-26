@@ -208,6 +208,8 @@ def date_range_to_month_ranges(start: datetime.date, end: datetime.date) -> [(da
     """Splits a start and end date into ranges by month
 
     Used for checking season rules"""
+    start = start.replace(day=1)
+    end = last_day_of_month(end)
     result = []
     while True:
         if start.month == 12:
