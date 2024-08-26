@@ -1,4 +1,5 @@
 import datetime
+import pytz
 
 from django import forms
 from django.core.exceptions import ValidationError
@@ -38,7 +39,11 @@ class BookingDateRangeForm(forms.Form):
         cleaned_data = super().clean()
         start_date = cleaned_data.get("start_date")
         end_date = cleaned_data.get("end_date")
-        last_sunday = last_weekday_date(datetime.date.today(), 6)
+        # Time of day rollover checking
+        tod_rollover = config.Config.objects.get().time_of_day_rollover
+        aest_now = datetime.datetime.now(pytz.timezone('Australia/Sydney'))
+        compare_date = aest_now.date() if aest_now.time() >= tod_rollover else aest_now.date() - datetime.timedelta(days=1)
+        last_sunday = last_weekday_date(compare_date, 6)
         max_weeks_till_booking = config.Config.objects.get().max_weeks_till_booking
         max_weeks_ahead_start = datetime.timedelta(
             weeks=max_weeks_till_booking
