@@ -164,6 +164,9 @@ class GuestForm(forms.Form):
 
 def check_season_rules(member: config.Member, start_date: datetime.date, end_date: datetime.date, rooms: [config.Room]):
     conf = config.Config.objects.get()  # only valid for single config
+    if member.share_number == 0:
+        # Maintenance booking, allow anything
+        return
     for start, end in date_range_to_month_ranges(start_date, end_date):
         overlapping_bookings = bookings_for_member_in_range(member, start, end)
         occupancy_array = room_occupancy_array(start, end, rooms, overlapping_bookings)
