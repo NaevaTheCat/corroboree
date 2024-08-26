@@ -15,7 +15,7 @@ class BookingDateRangeForm(forms.Form):
     start_date = forms.DateField(
         label="Start date",
         validators=[
-            MinValueValidator(datetime.date.today()),
+            MinValueValidator(datetime.datetime.now(pytz.timezone('Australia/Sydney')).date()),
         ],
         widget=widgets.AdminDateInput(
             attrs={
