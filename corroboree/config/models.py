@@ -84,7 +84,7 @@ class Member(ClusterableModel):
     share_number = models.IntegerField(primary_key=True,
                                        validators=[
                                            MaxValueValidator(50, message="Cannot exceed 50 shares"),
-                                           MinValueValidator(1, message="Share number is less than 1")
+                                           MinValueValidator(0, message="Share number is less than 1")
                                        ])
     first_name = models.CharField(max_length=128)
     last_name = models.CharField(max_length=128)
