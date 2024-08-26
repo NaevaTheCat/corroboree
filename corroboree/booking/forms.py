@@ -91,17 +91,10 @@ class BookingRoomChoosingForm(forms.Form):
         queryset=None,
         widget=forms.CheckboxSelectMultiple,
     )
-    member = forms.ModelChoiceField(
-        queryset=config.Member.objects.all(),
-        widget=forms.Select(
-            attrs={
-                "readonly": "readonly",
-            }
-        ),
-    )
 
     def __init__(self, *args, start_date=None, end_date=None, member=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.member = member
         if start_date is not None and end_date is not None:
             current_booking_records = BookingRecord.objects.filter(
                 end_date__gt=datetime.date.today(),
@@ -131,7 +124,6 @@ class BookingRoomChoosingForm(forms.Form):
             self.fields["room_selection"].queryset = available_rooms
             self.fields["start_date"].initial = start_date
             self.fields["end_date"].initial = end_date
-            self.fields["member"].initial = member
 
     def clean(self):
         cleaned_data = super().clean()
@@ -141,7 +133,7 @@ class BookingRoomChoosingForm(forms.Form):
                 'You must select at least one room'
             )
         check_season_rules(
-            member=cleaned_data.get('member'),
+            member=self.member,
             start_date=cleaned_data.get('start_date'),
             end_date=cleaned_data.get('end_date'),
             rooms=room_selection,

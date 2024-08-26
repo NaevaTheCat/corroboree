@@ -85,7 +85,7 @@ class BookingPage(Page):
                     if room_form.is_valid():
                         # Put the booking in the database as a hold and redirect the user to finish it
                         booking_record = BookingRecord(
-                            member=room_form.cleaned_data.get('member'),
+                            member=member,
                             start_date=room_form.cleaned_data.get('start_date'),
                             end_date=room_form.cleaned_data.get('end_date'),
                             member_in_attendance=None,
