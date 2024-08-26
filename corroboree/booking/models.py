@@ -62,6 +62,14 @@ class BookingRecord(models.Model):
         ]),
     ]
 
+    def __str__(self):
+        return '[{id}] {start} - {end}: {member}'.format(
+            id=self.pk,
+            start=self.start_date,
+            end=self.end_date,
+            member=self.member,
+        )
+
     def calculate_booking_cart(self, conf: config.Config):
         booking_types = get_booking_types(conf, self.start_date, self.end_date)
         cost = 0
