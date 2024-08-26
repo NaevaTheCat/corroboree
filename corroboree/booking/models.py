@@ -5,12 +5,12 @@ from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import models
 from django.db.models import Sum
-from django.forms import formset_factory
+from django.forms import formset_factory, CheckboxSelectMultiple
 from django.shortcuts import render, redirect
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
 from django.views.decorators.csrf import csrf_protect
-from wagtail.admin.panels import FieldPanel, MultiFieldPanel
+from wagtail.admin.panels import FieldPanel, FieldRowPanel, MultiFieldPanel
 from wagtail.contrib.routable_page.models import RoutablePageMixin, path
 from wagtail.fields import RichTextField
 from wagtail.models import Page
@@ -45,6 +45,22 @@ class BookingRecord(models.Model):
     cost = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus, default=BookingRecordPaymentStatus.NOT_ISSUED)
     status = models.CharField(max_length=2, choices=BookingRecordStatus)
+
+    panels = [
+        FieldPanel('member'),
+        FieldPanel('member_in_attendance'),
+        FieldRowPanel([
+            FieldPanel('start_date'),
+            FieldPanel('end_date'),
+        ]),
+        FieldPanel('rooms', widget=CheckboxSelectMultiple),
+        FieldPanel('other_attendees'),
+        FieldPanel('cost'),
+        FieldRowPanel([
+            FieldPanel('status'),
+            FieldPanel('payment_status'),
+        ]),
+    ]
 
     def calculate_booking_cart(self, conf: config.Config):
         booking_types = get_booking_types(conf, self.start_date, self.end_date)
