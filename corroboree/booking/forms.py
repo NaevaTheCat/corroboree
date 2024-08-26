@@ -148,8 +148,14 @@ class BookingRoomChoosingForm(forms.Form):
         )
 
 
+# Custom field for member_in_attendance names
+class MiAModelChoiceField(forms.ModelChoiceField):
+    def label_from_instance(self, obj):
+        return obj.first_name + ' ' + obj.last_name
+
+
 class BookingRecordMemberInAttendanceForm(forms.Form):
-    member_in_attendance = forms.ModelChoiceField(queryset=config.FamilyMember.objects.all())
+    member_in_attendance = MiAModelChoiceField(queryset=config.FamilyMember.objects.all())
 
     def __init__(self, *args, member=None, **kwargs):
         super().__init__(*args, **kwargs)
