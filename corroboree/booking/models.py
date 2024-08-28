@@ -15,11 +15,11 @@ from wagtail.contrib.routable_page.models import RoutablePageMixin, path
 from wagtail.fields import RichTextField
 from wagtail.models import Page
 from wagtail.snippets.models import register_snippet
+from wagtail.snippets.views.snippets import SnippetViewSet
 
 from corroboree.config import models as config
 
 
-@register_snippet
 class BookingRecord(models.Model):
     class BookingRecordStatus(models.TextChoices):
         IN_PROGRESS = "PR"
@@ -46,6 +46,59 @@ class BookingRecord(models.Model):
     payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus, default=BookingRecordPaymentStatus.NOT_ISSUED)
     status = models.CharField(max_length=2, choices=BookingRecordStatus)
 
+    def __str__(self):
+        return '[{id}] {start} - {end}: {member}'.format(
+            id=self.pk,
+            start=self.start_date,
+            end=self.end_date,
+            member=self.member,
+        )
+
+    def rooms_list(self):
+        rooms = list(self.rooms.all())
+        return ', '.join(str(r) for r in rooms)
+
+    def calculate_booking_cart(self, conf: config.Config):
+        booking_types = get_booking_types(conf, self.start_date, self.end_date)
+        cost = 0
+        for day in booking_types:
+            # add the cost of the highest (smallest int) priority booking mult by rooms
+            cost += self.rooms.count() * booking_types[day].exclude(
+                banned_rooms__in=self.rooms.all()).exclude(
+                minimum_rooms__gt=self.rooms.count()).order_by('priority_rank').first().rate
+        self.cost = cost
+        self.save()
+
+
+class BookingRecordViewSet(SnippetViewSet):
+    model = BookingRecord
+    icon = 'form'
+    menu_label = 'Bookings'
+    menu_name = 'bookings'
+    menu_order = 300
+    add_to_admin_menu = True
+    list_display = [
+        'member',
+        'start_date',
+        'end_date',
+        'member_in_attendance',
+        'status',
+        'payment_status',
+        'rooms_list',
+    ]
+    list_per_page = 50
+    copy_view_enabled = False
+    inspect_view_enabled = True
+    admin_url_namespace = 'bookings_view'
+    base_url_path = 'internal/bookings'
+    list_filter = {
+        'member__last_name': ['exact', 'icontains'],
+        'start_date': ['lt', 'gt'],
+        'end_date': ['lt', 'gt'],
+        'status': ['exact'],
+        'payment_status': ['exact'],
+    }
+
     panels = [
         FieldPanel('member'),
         FieldPanel('member_in_attendance'),
@@ -62,24 +115,8 @@ class BookingRecord(models.Model):
         ]),
     ]
 
-    def __str__(self):
-        return '[{id}] {start} - {end}: {member}'.format(
-            id=self.pk,
-            start=self.start_date,
-            end=self.end_date,
-            member=self.member,
-        )
 
-    def calculate_booking_cart(self, conf: config.Config):
-        booking_types = get_booking_types(conf, self.start_date, self.end_date)
-        cost = 0
-        for day in booking_types:
-            # add the cost of the highest (smallest int) priority booking mult by rooms
-            cost += self.rooms.count() * booking_types[day].exclude(
-                banned_rooms__in=self.rooms.all()).exclude(
-                minimum_rooms__gt=self.rooms.count()).order_by('priority_rank').first().rate
-        self.cost = cost
-        self.save()
+register_snippet(BookingRecordViewSet)
 
 
 class BookingPage(Page):
