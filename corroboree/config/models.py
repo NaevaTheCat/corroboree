@@ -8,7 +8,6 @@ from django.db.models import F, Q
 from modelcluster.fields import ParentalKey, ParentalManyToManyField
 from modelcluster.models import ClusterableModel
 from wagtail.admin.panels import FieldPanel, FieldRowPanel, InlinePanel
-from wagtail.snippets.models import register_snippet
 
 
 # Validators
@@ -19,7 +18,6 @@ def validate_only_one_instance(obj):
         raise ValidationError("Can only create 1 %s instance" % model.__name__)
 
 
-@register_snippet
 class Config(ClusterableModel):
     max_weeks_till_booking = models.IntegerField(default=26)
     time_of_day_rollover = models.TimeField(
@@ -78,7 +76,6 @@ class Config(ClusterableModel):
         validate_only_one_instance(self)
 
 
-@register_snippet
 class Member(ClusterableModel):
     config = ParentalKey(Config, on_delete=models.PROTECT, related_name="members")
     share_number = models.IntegerField(primary_key=True,
@@ -107,7 +104,6 @@ class Member(ClusterableModel):
         return share_prefix + name
 
 
-@register_snippet
 class FamilyMember(ClusterableModel):
     primary_shareholder = ParentalKey(Member, on_delete=models.CASCADE, related_name="family")
     first_name = models.CharField(max_length=128)
@@ -123,6 +119,9 @@ class FamilyMember(ClusterableModel):
         FieldPanel("contact_email"),
     ]
 
+    def name(self):
+        return self.first_name + ' ' + self.last_name
+
     def __str__(self):
         name = self.first_name + ' ' + self.last_name
         share_holder = '(' + str(self.primary_shareholder) + ') '
@@ -136,7 +135,6 @@ class FamilyMember(ClusterableModel):
             raise ValidationError("Cannot add more than %s family members" % str(maximum_family_members))
 
 
-@register_snippet
 class RoomType(ClusterableModel):
     config = ParentalKey(Config, on_delete=models.CASCADE, related_name="room_types")
     # TODO move to limits to settings
@@ -171,7 +169,6 @@ class RoomType(ClusterableModel):
         return double_text + join_text + bunk_text
 
 
-@register_snippet
 class Room(ClusterableModel):
     # TODO validators to settings
     config = ParentalKey(Config, on_delete=models.PROTECT, related_name="rooms")
@@ -185,7 +182,6 @@ class Room(ClusterableModel):
         return str(self.room_number) + ': ' + str(self.room_type)
 
 
-@register_snippet
 class Season(ClusterableModel):
     config = ParentalKey(Config, on_delete=models.PROTECT, related_name="seasons")
 
@@ -267,7 +263,6 @@ class Season(ClusterableModel):
                     raise ValidationError("This season shares months with %s" % s)
 
 
-@register_snippet
 class BookingType(ClusterableModel):
     config = ParentalKey(Config, on_delete=models.PROTECT, related_name="booking_types")
     booking_type_name = models.CharField(max_length=128)
