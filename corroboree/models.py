@@ -15,8 +15,9 @@ class PoliciesPage(Page):
 class TextPage(Page):
     body = RichTextField()
 
-    content_panels = [
+    content_panels = Page.content_panels + [
         FieldPanel('body'),
     ]
 
-
+    parent_page_types = ['home.HomePage']
+    subpage_types = []
