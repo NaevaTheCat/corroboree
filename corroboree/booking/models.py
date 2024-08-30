@@ -322,14 +322,18 @@ def dates_to_weeks(start_date: date, end_date: date, week_start_day=6) -> (int, 
 
     Using datetime weekday ints monday=0 sunday=6.
     """
+    total_days = (end_date - start_date).days
     start_weekday = start_date.weekday()
     end_weekday = end_date.weekday()
     leading_days = (week_start_day - start_weekday) % 7
-    trailing_days = (7 - (week_start_day - end_weekday)) % 7
-    from_week = start_date + timedelta(days=leading_days)
-    till_week = end_date - timedelta(days=trailing_days)
-    weeks = int((till_week - from_week).days / 7)
-    return leading_days, weeks, trailing_days
+    if total_days <= leading_days:
+        return total_days, 0, 0
+    else:
+        trailing_days = (7 - (week_start_day - end_weekday)) % 7
+        from_week = start_date + timedelta(days=leading_days)
+        till_week = end_date - timedelta(days=trailing_days)
+        weeks = int((till_week - from_week).days / 7)
+        return leading_days, weeks, trailing_days
 
 
 def get_booking_types(conf: config.Config, start_date: date, end_date: date):
@@ -446,8 +450,8 @@ def date_range_to_month_ranges(start: datetime.date, end: datetime.date) -> [(da
 
 
 def last_day_of_month(day: datetime.date):
-    next_month = day.replace(day=28) + datetime.timedelta(days=4)
-    return next_month - datetime.timedelta(days=next_month.day)
+    next_month = day.replace(day=28) + timedelta(days=4)
+    return next_month - timedelta(days=next_month.day)
 
 
 def room_occupancy_array(start_date: datetime.date, end_date: datetime.date, rooms: [config.Room],
