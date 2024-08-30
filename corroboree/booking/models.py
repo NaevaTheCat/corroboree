@@ -128,6 +128,9 @@ class BookingPage(Page):
         FieldPanel("not_authorised_message")
     ]
 
+    parent_page_types = ['home.HomePage']
+    subpage_types = []
+
     def serve(self, request):
         from corroboree.booking.forms import BookingDateRangeForm, BookingRoomChoosingForm
         member = request.user.member
@@ -209,6 +212,9 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
             FieldPanel('not_found_text'),
         )),
     ]
+
+    parent_page_types = ['home.HomePage']
+    subpage_types = []
 
     @path('')
     def booking_index_page(self, request):

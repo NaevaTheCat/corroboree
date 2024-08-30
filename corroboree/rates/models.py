@@ -37,3 +37,6 @@ class RatesPage(Page):
         FieldPanel('subheading'),
         FieldPanel('rates_tables'),
     ]
+
+    parent_page_types = ['home.HomePage']
+    subpage_types = []
