@@ -29,6 +29,7 @@ INSTALLED_APPS = [
     "corroboree",
     "corroboree.config",
     "corroboree.users",
+    "corroboree.rates",
     "corroboree.booking",
     "corroboree.news",
     "wagtail.contrib.forms",

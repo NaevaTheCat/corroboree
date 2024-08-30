@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% load wagtailcore_tags %}
+
+{% block content %}
+    <h3>{{ page.subheading }}</h3>
+
+    {% for block in page.rates_tables %}
+	{% if block.block_type == 'season_rates' %}
+	    <div class='season-rates'>
+	    {{ block.value.season.season_name }}
+	    {% for season_rates_block in block.value %}
+	    <div class="rates-table">
+		<h4>{{ season_rates_block.season.season_name }}</h4>
+		<table>
+		    <tr hidden>
+			<th>Booking Name</th>
+			<th>Rate</th>
+			<th>Per unit</th>
+		    </tr>
+		    {% for rate in season_rates_block.rates %}
+			<tr>
+			    <td>{{ rate.display_name }}</td>
+			    <td>${{ rate.booking_type.rate }}</td>
+			    <td>{% if rate.booking_type.is_full_week_only %}per week{% else %}per day{% endif %}</td>
+			</tr>
+		    {% endfor %}
+		</table>
+	    </div>
+	    {% endfor %}
+	    </div>
+	{% elif block.block_type == 'notes' %}
+	    <div class='rates-notes'>
+	    <h4>{{ block.value.heading }}</h4>
+	    <ol>
+		{% for note in block.value.notes %}
+		    <li>{{ note }}</li>
+		{% endfor %}
+	    </ol>
+	    </div>
+	{% endif %}
+    {% endfor %}
+{% endblock %}
