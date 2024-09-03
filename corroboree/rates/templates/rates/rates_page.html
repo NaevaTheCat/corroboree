@@ -3,7 +3,7 @@
 {% load wagtailcore_tags %}
 
 {% block content %}
-    <h3>{{ page.subheading }}</h3>
+    <div class='subheading'><h3>{{ page.subheading }}</h3></div>
 
     {% for block in page.rates_tables %}
 	{% if block.block_type == 'season_rates' %}

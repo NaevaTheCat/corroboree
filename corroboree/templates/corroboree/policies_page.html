@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% load wagtailcore_tags %}
+
+{% block content %}
+    <div class='subheading'><h3>{{ page.subheading }}</h3></div>
+    {{ page.introduction | richtext }}
+
+    {% for block in page.body %}
+	{% if block.block_type == 'policy' %}
+	    <a href={% pageurl block.value %}>{{ block.value.title }}</a>
+	{% elif block.block_type == 'policy_with_subpolicies' %}
+	    <a href={% pageurl block.value.policy %}>{{ block.value.policy.title }}</a>
+	    {% for subpolicy in block.value.sub_policies %}
+		<p class='sub_policy' style='margin-left: 25px;'>
+		    <a href={% pageurl subpolicy %}>{{ subpolicy.title }}</a>
+		</p>
+	    {% endfor %}
+	{% elif block.block_type == 'section' %}
+	    <h5>{{ block.value.heading }}</h5>
+	    <p class='policy-section-intro'>
+		{{ block.value.intro_text | richtext }}
+	    </p>
+	{% endif %}
+    {% endfor %}
+	    
+{% endblock %}
