@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% load wagtailcore_tags %}
+
+{% block content %}
+    {% for block in page.body %}
+	{% if block.block_type == 'heading' %}
+	    <div class='subheading'><h3>{{ block.value }}</h3></div>
+	{% elif block.block_type == 'board_contacts' %}
+	    <table class='contacts-table'>
+		<tr hidden>
+		    <th>Name</th>
+		    <th>Position</th>
+		    <th>Email</th>
+		    <th>Phone</th>
+		</tr>
+		{% for contact in block.value %}
+		    <tr>
+			<td>{{ contact.member.first_name }} {{ contact.member.last_name }}</td>
+			<td>{{ contact.position }}</td>
+			<td><a href='mailto: {{ contact.member.contact_email }}'>{{ contact.member.contact_email }}</a></td>
+			<td>{{ contact.contact_phone }}</td>
+		    </tr>
+		{% endfor %}
+	    </table>
+	{% elif block.block_type == 'responsibility' %}
+	    {% with responsibility=block.value %}
+		<div class='subsubheading'><h4>{{ responsibility.title }}</h4></div>
+		<table class='contact-table'>
+		    <tr>
+			<td>{{ responsibility.member.first_name }} {{ responsibility.member.last_name }}</td>
+			<td><a href='mailto: {{ responsibility.member.contact_email }}'>{{ responsibility.member.contact_email }}</a></td>
+			<td>{{ responsibility.contact_phone }}</td>
+		    </tr>
+		</table>
+	    {% endwith %}
+	{% endif %}
+    {% endfor %}
+{% endblock content %}

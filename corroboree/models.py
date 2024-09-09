@@ -4,11 +4,36 @@ from wagtail.models import Page
 from wagtail.fields import StreamField, RichTextField
 from wagtail import blocks
 from wagtail.snippets.blocks import SnippetChooserBlock
-from corroboree.config.models import Season, BookingType
+from corroboree.config.models import Member
+
+
+class BoardContactBlock(blocks.StructBlock):
+    member = SnippetChooserBlock(Member)
+    position = blocks.CharBlock(max_length=128, help_text='Position on board')
+    contact_phone = blocks.CharBlock(max_length=14, help_text='Phone number as a string')
+
+
+class ResponsibilityBlock(blocks.StructBlock):
+    title = blocks.CharBlock(max_length=128, help_text='Title of Responsibility')
+    member = SnippetChooserBlock(Member)
+    contact_phone = blocks.CharBlock(max_length=14, help_text='Phone number as a string')
 
 
 class ContactPage(Page):
-    pass
+    body = StreamField([
+        ('heading', blocks.CharBlock(max_length=128, help_text='A heading within the page')),
+        ('board_contacts', blocks.ListBlock(BoardContactBlock())),
+        ('responsibility', ResponsibilityBlock())
+    ], block_counts={
+        'board_contacts': {'min_num': 1, 'max_num': 1},
+    })
+
+    content_panels = Page.content_panels + [
+        FieldPanel('body'),
+    ]
+
+    parent_page_types = ['home.HomePage']
+    subpage_types = []
 
 
 class PolicyPage(Page):
