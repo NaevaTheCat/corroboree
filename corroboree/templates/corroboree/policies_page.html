@@ -8,9 +8,13 @@
 
     {% for block in page.body %}
 	{% if block.block_type == 'policy' %}
-	    <a href={% pageurl block.value %}>{{ block.value.title }}</a>
+	    <p class='policy'>
+		<a href={% pageurl block.value %}>{{ block.value.title }}</a>
+	    </p>
 	{% elif block.block_type == 'policy_with_subpolicies' %}
-	    <a href={% pageurl block.value.policy %}>{{ block.value.policy.title }}</a>
+	    <p class='policy'>
+		<a href={% pageurl block.value.policy %}>{{ block.value.policy.title }}</a>
+	    </p>
 	    {% for subpolicy in block.value.sub_policies %}
 		<p class='sub_policy' style='margin-left: 25px;'>
 		    <a href={% pageurl subpolicy %}>{{ subpolicy.title }}</a>
