@@ -5,8 +5,11 @@
 {% block content %}
     {% for post in newspages %}
 	{% with post=post.specific %}
-	    <h3>{{ post.pub_date }}</h3>
-	    {{ post.body|richtext }}
+	    <div class='news-post'>
+		<h3>{{ post.title }}</h3>
+		<h4>{{ post.pub_date }}</h4>
+		{{ post.body|richtext }}
+	    </div>
 	{% endwith %}
     {% endfor %}
 {% endblock %}
