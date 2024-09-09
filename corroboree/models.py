@@ -25,30 +25,31 @@ class PolicyPage(Page):
 
 
 class SectionBlock(blocks.StructBlock):
-    heading = blocks.CharBlock(max_length=512)
-    intro_text = blocks.RichTextBlock(required=False)
+    heading = blocks.CharBlock(max_length=512, help_text='A section subheading to divide kinds of policies')
+    intro_text = blocks.RichTextBlock(required=False, help_text='Optional introductory text for the section')
 
 
 class PolicyWithSubPoliciesBlock(blocks.StructBlock):
-    policy = blocks.PageChooserBlock(page_type=PolicyPage)
+    policy = blocks.PageChooserBlock(page_type=PolicyPage, help_text='Choose a child page which is a policy')
     sub_policies = blocks.ListBlock(
-        blocks.PageChooserBlock(page_type=PolicyPage),
+        blocks.PageChooserBlock(page_type=PolicyPage, help_text='Choose child pages of the above policy page as subpolicies'),
     )
 
 
 class PoliciesPage(Page):
     subheading = models.CharField(max_length=512)
-    introduction = RichTextField()
+    introduction = RichTextField(blank=True)
     body = StreamField([
-        ('policy', blocks.PageChooserBlock(page_type=PolicyPage)),
+        ('policy', blocks.PageChooserBlock(page_type=PolicyPage, help_text='Choose a child page which is a policy')),
         ('section', SectionBlock()),
         ('policy_with_subpolicies', PolicyWithSubPoliciesBlock()),
     ], blank=True)
 
     content_panels = Page.content_panels + [
-        FieldPanel('subheading'),
-        FieldPanel('introduction'),
-        FieldPanel('body'),
+        FieldPanel('subheading', help_text='Subheading for page. Displayed before policies'),
+        FieldPanel('introduction', help_text='Optional Introductory text for page'),
+        FieldPanel('body', help_text='Policies are displayed as links to child pages of this page. Create the child '
+                                     'pages prior to configuring'),
     ]
 
     parent_page_types = ['home.HomePage']
