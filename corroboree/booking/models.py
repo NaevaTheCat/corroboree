@@ -63,9 +63,14 @@ class BookingRecord(models.Model):
         cost = 0
         for day in booking_types:
             # add the cost of the highest (smallest int) priority booking mult by rooms
-            cost += self.rooms.count() * booking_types[day].exclude(
+            booking_type = booking_types[day].exclude(
                 banned_rooms__in=self.rooms.all()).exclude(
-                minimum_rooms__gt=self.rooms.count()).order_by('priority_rank').first().rate
+                minimum_rooms__gt=self.rooms.count()).order_by(
+                'priority_rank').first()
+            if booking_type.is_flat_rate:
+                cost += booking_type.rate
+            else:
+                cost += self.rooms.count() * booking_type.rate
         self.cost = cost
         self.save()
 
