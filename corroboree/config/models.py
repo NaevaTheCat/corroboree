@@ -267,7 +267,10 @@ class BookingType(ClusterableModel):
     config = ParentalKey(Config, on_delete=models.PROTECT, related_name="booking_types")
     booking_type_name = models.CharField(max_length=128)
     rate = models.DecimalField(max_digits=8, decimal_places=2)
-    is_full_week_only = models.BooleanField()
+    is_full_week_only = models.BooleanField(default=False)
+    is_flat_rate = models.BooleanField(
+        default=False,
+        help_text='If set, the fee for this booking is not multiplied by the number of rooms booked')
     banned_rooms = ParentalManyToManyField(Room, blank=True)
     season_active = ParentalKey(Season, on_delete=models.CASCADE, related_name="booking_types")
     minimum_rooms = models.IntegerField("Minimum number of booked rooms", default=0)
@@ -286,7 +289,8 @@ class BookingType(ClusterableModel):
         FieldRowPanel([
             FieldPanel("season_active"),
             FieldPanel("rate"),
-            FieldPanel("is_full_week_only")
+            FieldPanel("is_full_week_only"),
+            FieldPanel('is_flat_rate'),
         ]),
         FieldPanel("banned_rooms", widget=forms.CheckboxSelectMultiple),
         FieldPanel("minimum_rooms"),
