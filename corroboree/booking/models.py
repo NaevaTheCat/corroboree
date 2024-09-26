@@ -3,11 +3,13 @@ from datetime import date, datetime, timedelta
 
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.core.mail import send_mail
+from django.contrib.auth import logout
 from django.db import models
 from django.db.models import Sum
 from django.forms import formset_factory, CheckboxSelectMultiple
 from django.shortcuts import render, redirect
 from django.template.loader import render_to_string
+from django.utils import timezone
 from django.utils.html import strip_tags
 from django.views.decorators.csrf import csrf_protect
 from wagtail.admin.panels import FieldPanel, FieldRowPanel, MultiFieldPanel
@@ -140,6 +142,10 @@ class BookingPage(Page):
         from corroboree.booking.forms import BookingDateRangeForm, BookingRoomChoosingForm
         if not request.user.is_verified:
             raise PermissionDenied()  # should never happen barring admin shenangians
+        else:
+            response = refresh_stale_login(request)
+            if response:
+                return response
         member = request.user.member
         room_form = None
         if member is None:
@@ -226,6 +232,9 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
     @path('')
     def booking_index_page(self, request):
         if request.user.is_verified:
+            response = refresh_stale_login(request)
+            if response:
+                return response
             member = request.user.member
             today = date.today()
             bookings = BookingRecord.objects.filter(member__exact=member)
@@ -250,6 +259,9 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
     def booking_edit_page(self, request, booking_id=None):
         from corroboree.booking.forms import BookingRecordMemberInAttendanceForm, GuestForm
         if request.user.is_verified:
+            response = refresh_stale_login(request)
+            if response:
+                return response
             member = request.user.member
             if booking_id is None:
                 booking_id = BookingRecord.objects.filter(member=member).order_by('last_updated').first()
@@ -299,6 +311,9 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
     @path('pay/<int:booking_id>/')
     def booking_payment_page(self, request, booking_id=None):
         if request.user.is_verified:
+            response = refresh_stale_login(request)
+            if response:
+                return response
             member = request.user.member
             if booking_id is None:
                 booking_id = BookingRecord.objects.filter(member=member).order_by('last_updated').first()
@@ -322,6 +337,15 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                                )
 class BookingCalendar(Page):
     pass
+
+
+def refresh_stale_login(request, td=timedelta(days=1)):
+    """Check if the session is older than 24 hours. If it is prompt the user to reauthenticate"""
+    login_age = timezone.now() - request.user.last_login
+    if login_age > td:
+        return redirect('two_factor:login')
+    else:
+        return None
 
 
 def bookings_for_member_in_range(member: config.Member, start_date: date, end_date: date):
