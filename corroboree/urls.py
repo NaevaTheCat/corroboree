@@ -8,12 +8,17 @@ from wagtail.documents import urls as wagtaildocs_urls
 
 from search import views as search_views
 
+from django.contrib.auth import views as auth_views
+from two_factor import views as two_factor_views
+
 urlpatterns = [
     path("django-admin/", admin.site.urls),
     path("admin/", include(wagtailadmin_urls)),
     path("documents/", include(wagtaildocs_urls)),
     path("search/", search_views.search, name="search"),
-    path("accounts/", include('django.contrib.auth.urls')),
+    path('', include(([path('account/login/', two_factor_views.LoginView.as_view(), name='login')], 'two_factor'),
+                     'two_factor')),  # namespaced only needed urls
+    path('logout/', auth_views.LogoutView.as_view(), name='logout')
 ]
 
 

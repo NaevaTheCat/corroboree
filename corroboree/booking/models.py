@@ -1,7 +1,7 @@
 import datetime
 from datetime import date, datetime, timedelta
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, PermissionDenied
 from django.core.mail import send_mail
 from django.db import models
 from django.db.models import Sum
@@ -138,6 +138,8 @@ class BookingPage(Page):
 
     def serve(self, request):
         from corroboree.booking.forms import BookingDateRangeForm, BookingRoomChoosingForm
+        if not request.user.is_verified:
+            raise PermissionDenied()  # should never happen barring admin shenangians
         member = request.user.member
         room_form = None
         if member is None:
@@ -223,7 +225,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
 
     @path('')
     def booking_index_page(self, request):
-        if request.user.is_authenticated:
+        if request.user.is_verified:
             member = request.user.member
             today = date.today()
             bookings = BookingRecord.objects.filter(member__exact=member)
@@ -247,7 +249,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
     @path('edit/<int:booking_id>/')
     def booking_edit_page(self, request, booking_id=None):
         from corroboree.booking.forms import BookingRecordMemberInAttendanceForm, GuestForm
-        if request.user.is_authenticated:
+        if request.user.is_verified:
             member = request.user.member
             if booking_id is None:
                 booking_id = BookingRecord.objects.filter(member=member).order_by('last_updated').first()
@@ -296,7 +298,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                                )
     @path('pay/<int:booking_id>/')
     def booking_payment_page(self, request, booking_id=None):
-        if request.user.is_authenticated:
+        if request.user.is_verified:
             member = request.user.member
             if booking_id is None:
                 booking_id = BookingRecord.objects.filter(member=member).order_by('last_updated').first()
