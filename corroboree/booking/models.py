@@ -3,7 +3,7 @@ from datetime import date, datetime, timedelta
 
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.core.mail import send_mail
-from django.contrib.auth import logout
+from django.contrib import messages
 from django.db import models
 from django.db.models import Sum
 from django.forms import formset_factory, CheckboxSelectMultiple
@@ -350,7 +350,8 @@ def refresh_stale_login(request, td=timedelta(days=1)):
     Redirect must be called in serve method, so something like if not none return (result)"""
     login_age = timezone.now() - request.user.last_login
     if login_age > td:
-        return redirect('two_factor:login')
+        messages.add_message(request, messages.INFO, 'Please reauthenticate in order to use the booking functions.')
+        return redirect('login')
     else:
         return None
 

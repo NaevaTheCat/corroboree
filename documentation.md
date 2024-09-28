@@ -23,7 +23,7 @@ wagtail. If that ever needs to happen.
 Booking system uses is_verified to ensure users logged in via 2fa to
 make a booking. Accessing the booking pages checks when someone last
 logged in, and if it's more than 1 day ago takes them to the login
-page. 
+page. The messages framework is used for explaining why.
 
 django auth is used for handling logout and password resets. Using the
 views under /account/, other than login which is handled by
