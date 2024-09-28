@@ -12,9 +12,12 @@
         </p>
     </nav>
     </div>
-    <div class="row">
+    <div style='text-align: right;' class="row">
 	{% if request.user.is_authenticated %}
 	    <h3>Hello {{ request.user.first_name }} {{ request.user.last_name }}</h3>
+	    <form method='get' action='{% url 'password_change' %}'>
+		<button type='submit'>Change password</button>
+	    </form>
 	    <form method="post" action="{% url 'logout' %}">
 		{% csrf_token %}
 		<button type="submit">logout</button>

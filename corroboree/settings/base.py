@@ -189,7 +189,7 @@ WAGTAILADMIN_BASE_URL = "http://example.com"
 
 # User related Settings
 # WAGTAIL_FRONTEND_LOGIN_TEMPLATE = "registration/login.html"
-WAGTAIL_FRONTEND_LOGIN_URL = 'two_factor:login'
+WAGTAIL_FRONTEND_LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 AUTH_USER_MODEL = 'users.MemberAccount'
