@@ -45,7 +45,8 @@ class BookingRecord(models.Model):
                                              null=True)
     other_attendees = models.JSONField(default=dict, blank=True)  # {{first:, last:, contact:}}
     cost = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus, default=BookingRecordPaymentStatus.NOT_ISSUED)
+    payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus,
+                                      default=BookingRecordPaymentStatus.NOT_ISSUED)
     status = models.CharField(max_length=2, choices=BookingRecordStatus)
 
     def __str__(self):
@@ -202,7 +203,7 @@ class BookingPage(Page):
 @csrf_protect  # superstitious? might've fixed a bug once
 class BookingPageUserSummary(RoutablePageMixin, Page):
     in_progress_text = RichTextField(blank=True,
-                                   help_text='Text to introduce bookings that need to be completed if any exit')
+                                     help_text='Text to introduce bookings that need to be completed if any exit')
     submitted_text = RichTextField(blank=True,
                                    help_text='Text to introduce bookings that have been submitted but not confirmed/paid')
     upcoming_text = RichTextField(blank=True,
@@ -210,7 +211,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
     edit_text = RichTextField(blank=True,
                               help_text='Text to display when editing a booking')
     not_found_text = RichTextField(blank=True,
-                                      help_text='Text to display when linked booking is not theirs or editable')
+                                   help_text='Text to display when linked booking is not theirs or editable')
     no_bookings_text = RichTextField(blank=True)
 
     content_panels = Page.content_panels + [
@@ -308,6 +309,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                                },
                                template='booking/edit_booking.html',
                                )
+
     @path('pay/<int:booking_id>/')
     def booking_payment_page(self, request, booking_id=None):
         if request.user.is_verified:
@@ -327,7 +329,8 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 )
             except BookingRecord.DoesNotExist:  # Due to using PK no need to catch multiple objects
                 booking = None
-                return self.render(request, template='booking/booking_not_found.html')  # TODO: Mod template for url message
+                return self.render(request,
+                                   template='booking/booking_not_found.html')  # TODO: Mod template for url message
             return self.render(request,
                                context_overrides={
                                    'title': 'Confirm and Pay',
@@ -335,12 +338,16 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                                },
                                template='booking/pay_booking.html',
                                )
+
+
 class BookingCalendar(Page):
     pass
 
 
 def refresh_stale_login(request, td=timedelta(days=1)):
-    """Check if the session is older than 24 hours. If it is prompt the user to reauthenticate"""
+    """Check if the session is older than 24 hours. If it is prompt the user to reauthenticate
+    
+    Redirect must be called in serve method, so something like if not none return (result)"""
     login_age = timezone.now() - request.user.last_login
     if login_age > td:
         return redirect('two_factor:login')
