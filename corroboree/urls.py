@@ -8,12 +8,22 @@ from wagtail.documents import urls as wagtaildocs_urls
 
 from search import views as search_views
 
+from django.contrib.auth import views as auth_views
+from two_factor import views as two_factor_views
+
 urlpatterns = [
     path("django-admin/", admin.site.urls),
     path("admin/", include(wagtailadmin_urls)),
     path("documents/", include(wagtaildocs_urls)),
     path("search/", search_views.search, name="search"),
-    path("accounts/", include('django.contrib.auth.urls')),
+    path('account/login/', two_factor_views.LoginView.as_view(), name='login'),
+    path('account/logout/', auth_views.LogoutView.as_view(), name='logout'),
+    path('account/password_change/', auth_views.PasswordChangeView.as_view(), name='password_change'),
+    path('account/password_change/done/', auth_views.PasswordChangeDoneView.as_view(), name='password_change_done'),
+    path('account/password_reset/', auth_views.PasswordResetView.as_view(), name='password_reset'),
+    path('account/password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
+    path('account/reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
+    path('account/reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
 ]
 
 

@@ -1,13 +1,15 @@
 import datetime
 from datetime import date, datetime, timedelta
 
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, PermissionDenied
 from django.core.mail import send_mail
+from django.contrib import messages
 from django.db import models
 from django.db.models import Sum
 from django.forms import formset_factory, CheckboxSelectMultiple
 from django.shortcuts import render, redirect
 from django.template.loader import render_to_string
+from django.utils import timezone
 from django.utils.html import strip_tags
 from django.views.decorators.csrf import csrf_protect
 from wagtail.admin.panels import FieldPanel, FieldRowPanel, MultiFieldPanel
@@ -43,7 +45,8 @@ class BookingRecord(models.Model):
                                              null=True)
     other_attendees = models.JSONField(default=dict, blank=True)  # {{first:, last:, contact:}}
     cost = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
-    payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus, default=BookingRecordPaymentStatus.NOT_ISSUED)
+    payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus,
+                                      default=BookingRecordPaymentStatus.NOT_ISSUED)
     status = models.CharField(max_length=2, choices=BookingRecordStatus)
 
     def __str__(self):
@@ -138,6 +141,12 @@ class BookingPage(Page):
 
     def serve(self, request):
         from corroboree.booking.forms import BookingDateRangeForm, BookingRoomChoosingForm
+        if not request.user.is_verified:
+            raise PermissionDenied()  # should never happen barring admin shenangians
+        else:
+            response = refresh_stale_login(request)
+            if response:
+                return response
         member = request.user.member
         room_form = None
         if member is None:
@@ -194,7 +203,7 @@ class BookingPage(Page):
 @csrf_protect  # superstitious? might've fixed a bug once
 class BookingPageUserSummary(RoutablePageMixin, Page):
     in_progress_text = RichTextField(blank=True,
-                                   help_text='Text to introduce bookings that need to be completed if any exit')
+                                     help_text='Text to introduce bookings that need to be completed if any exit')
     submitted_text = RichTextField(blank=True,
                                    help_text='Text to introduce bookings that have been submitted but not confirmed/paid')
     upcoming_text = RichTextField(blank=True,
@@ -202,7 +211,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
     edit_text = RichTextField(blank=True,
                               help_text='Text to display when editing a booking')
     not_found_text = RichTextField(blank=True,
-                                      help_text='Text to display when linked booking is not theirs or editable')
+                                   help_text='Text to display when linked booking is not theirs or editable')
     no_bookings_text = RichTextField(blank=True)
 
     content_panels = Page.content_panels + [
@@ -223,7 +232,10 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
 
     @path('')
     def booking_index_page(self, request):
-        if request.user.is_authenticated:
+        if request.user.is_verified:
+            response = refresh_stale_login(request)
+            if response:
+                return response
             member = request.user.member
             today = date.today()
             bookings = BookingRecord.objects.filter(member__exact=member)
@@ -247,7 +259,10 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
     @path('edit/<int:booking_id>/')
     def booking_edit_page(self, request, booking_id=None):
         from corroboree.booking.forms import BookingRecordMemberInAttendanceForm, GuestForm
-        if request.user.is_authenticated:
+        if request.user.is_verified:
+            response = refresh_stale_login(request)
+            if response:
+                return response
             member = request.user.member
             if booking_id is None:
                 booking_id = BookingRecord.objects.filter(member=member).order_by('last_updated').first()
@@ -294,9 +309,13 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                                },
                                template='booking/edit_booking.html',
                                )
+
     @path('pay/<int:booking_id>/')
     def booking_payment_page(self, request, booking_id=None):
-        if request.user.is_authenticated:
+        if request.user.is_verified:
+            response = refresh_stale_login(request)
+            if response:
+                return response
             member = request.user.member
             if booking_id is None:
                 booking_id = BookingRecord.objects.filter(member=member).order_by('last_updated').first()
@@ -310,7 +329,8 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 )
             except BookingRecord.DoesNotExist:  # Due to using PK no need to catch multiple objects
                 booking = None
-                return self.render(request, template='booking/booking_not_found.html')  # TODO: Mod template for url message
+                return self.render(request,
+                                   template='booking/booking_not_found.html')  # TODO: Mod template for url message
             return self.render(request,
                                context_overrides={
                                    'title': 'Confirm and Pay',
@@ -318,8 +338,22 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                                },
                                template='booking/pay_booking.html',
                                )
+
+
 class BookingCalendar(Page):
     pass
+
+
+def refresh_stale_login(request, td=timedelta(days=1)):
+    """Check if the session is older than 24 hours. If it is prompt the user to reauthenticate
+    
+    Redirect must be called in serve method, so something like if not none return (result)"""
+    login_age = timezone.now() - request.user.last_login
+    if login_age > td:
+        messages.add_message(request, messages.INFO, 'Please reauthenticate in order to use the booking functions.')
+        return redirect('login')
+    else:
+        return None
 
 
 def bookings_for_member_in_range(member: config.Member, start_date: date, end_date: date):
