@@ -521,7 +521,7 @@ def check_season_rules(member: config.Member, start_date: datetime.date, end_dat
                         'This booking exceeds the {max} simultaneous rooms limit for {season} on {date}'.format(
                             max=season_in_month.max_monthly_simultaneous_rooms,
                             season=season_in_month.season_name,
-                            date=start + datetime.timedelta(sum_rooms.index(max(sum_rooms))),
+                            date=start_date + timedelta(days=sum_rooms.index(max(sum_rooms))),
                         )
                     )
             if season_in_month.max_monthly_room_weeks is not None:
