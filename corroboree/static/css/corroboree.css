@@ -1,0 +1,90 @@
+body {
+    max-width: 960px;
+    min-height: 100vh;
+    margin: 0 auto;
+    padding: 0 15px;
+    color: #231f20;
+    font-family: 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+    line-height: 1.25;
+}
+
+a {
+    background-color: transparent;
+    color: #308282;
+    text-decoration: underline;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e6e6e6;
+}
+
+table {
+  table-layout: fixed;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 10px;
+  text-align: center;
+}
+
+tbody tr:nth-child(odd) {
+  background-color: #6ec7c7;
+}
+
+tbody tr:nth-child(even) {
+  background-color: transparent;
+}
+
+button {
+  background-color: #308282;
+  border: none;
+  color: white;
+  padding: 10px 14px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  border-radius: 8px;
+  transition-duration: 0.4s;
+}
+
+button:hover {
+  background-color: #6ec7c7;
+}
+
+/* Form Styling */
+input[type=text],
+input[type=email] {
+  width: 80%;
+}
+
+input[type=date],
+input[type=checkbox] {
+  padding: 6px 10px;
+  margin: 6px 0;
+}
+
+input[type=button],
+input[type=submit] {
+  background-color: #308282;
+  border: none;
+  color: white;
+  padding: 10px 14px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  border-radius: 8px;
+  transition-duration: 0.4s;
+}
+
+input[type=button]:hover,
+input[type=submit]:hover {
+  background-color: #6ec7c7;
+}
