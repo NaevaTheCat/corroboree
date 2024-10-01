@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% load wagtailcore_tags %}
+{% load booking_record_tags %}
+
+{% block content %}
+    {{ page.cancel_text | richtext }}
+    {% if booking.status == 'PR' %}
+	<div class="booking-summary-table">
+	    <table border=1>
+		<thead>
+		    <tr>
+			<th>Start date</th>
+			<th>End date</th>
+			<th>Rooms</th>
+		    </tr>
+		</thead>
+		<tbody>
+		  <tr>
+		    {% render_booking_record booking 'IN_PROGRESS' %}
+		  </tr>
+		</tbody>
+	    </table>
+	</div>
+    {% endif %}
+    {% if booking.status == 'SB' %}
+	<div class="booking-summary-table">
+	    <table border=1>
+		<thead>
+		    <tr>
+			<th>Start date</th>
+			<th>End date</th>
+			<th>Rooms</th>
+			<th>Cost</th>
+			<th>Member in Attendance</th>
+			<th>Guests</th>
+		    </tr>
+		</thead>
+		<tbody>
+		  <tr>
+		    {% render_booking_record booking 'SUMMARY' %}
+		  </tr>
+		</tbody>
+	    </table>
+	</div>
+    {% endif %}
+    <form method='post' action=''>
+      {% csrf_token %}
+      <button type="submit">Confirm Cancellation</button>
+    </form>
+{% endblock %}

@@ -20,7 +20,7 @@
 		    {% for booking in in_progress_bookings %}
 			<tr>
 			    {% render_booking_record booking 'IN_PROGRESS' %}
-			    <td><a href="{% pageurl page %}edit/{{ booking.pk }}">Edit</a></td>
+			    <td><a href="{% pageurl page %}edit/{{ booking.pk }}">Edit</a> | <a href='{% pageurl page %}cancel/{{ booking.pk }}'>Cancel</a></td>
 			</tr>
 		    {% endfor %}
 		</tbody>
@@ -36,22 +36,25 @@
 			<th>Start date</th>
 			<th>End date</th>
 			<th>Rooms</th>
-			<th>Status</th>
+			<th>Cost</th>
 			<th>Member in Attendance</th>
 			<th>Guests</th>
+			<th>Pay</th>
 		    </tr>
 		</thead>
 		<tbody>
 		    {% for booking in submitted_bookings %}
 			<tr>
 			    {% render_booking_record booking 'SUMMARY' %}
+			    <td><a href='{% pageurl page %}pay/{{ booking.pk }}'>Pay</a> | <a href='{% pageurl page %}cancel/{{ booking.pk }}'>Cancel</td>
 			</tr>
 		    {% endfor %}
 		</tbody>
 	    </table>
 	</div>
     {% endif %}
-    {% if upcoming_bookings%}
+	{% if upcoming_bookings%}
+	{{ page.upcoming_text | richtext }}
 	<div class="booking-summary-table">
 	    <table border=1>
 		<thead>
@@ -61,7 +64,7 @@
 			<th>Rooms</th>
 			<th>Cost</th>
 			<th>Member in Attendance</th>
-			<th>Other Attendees</th>
+			<th>Guests</th>
 		    </tr>
 		</thead>
 		<tbody>

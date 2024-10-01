@@ -223,6 +223,8 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
     not_found_text = RichTextField(blank=True,
                                    help_text='Text to display when linked booking is not theirs or editable')
     no_bookings_text = RichTextField(blank=True)
+    cancel_text = RichTextField(blank=True,
+                                help_text='Text to display above the cancellation form')
 
     content_panels = Page.content_panels + [
         MultiFieldPanel(heading='Booking Summary Page', children=(
@@ -234,6 +236,9 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
         MultiFieldPanel(heading='Booking Edit Page', children=(
             FieldPanel('edit_text'),
             FieldPanel('not_found_text'),
+        )),
+        MultiFieldPanel(heading='Booking Cancellation Page', children=(
+            FieldPanel('cancel_text'),
         )),
     ]
 
@@ -353,6 +358,40 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                                        'booking': booking,
                                    },
                                    template='booking/pay_booking.html',
+                                   )
+
+    @path('cancel/<int:booking_id>/')
+    def booking_delete_page(self, request, booking_id=None):
+        if request.user.is_verified:
+            response = refresh_stale_login(request)
+            if response:
+                return response
+            member = request.user.member
+            if booking_id is None:
+                booking_id = BookingRecord.objects.filter(member=member).order_by('last_updated').first()
+            # Try find the booking, but make sure it's ours and editable!
+            try:
+                booking = BookingRecord.objects.get(
+                    pk=booking_id,
+                    member=member,
+                    status__in=[
+                        BookingRecord.BookingRecordStatus.IN_PROGRESS,
+                        BookingRecord.BookingRecordStatus.SUBMITTED,
+                    ]
+                )
+            except BookingRecord.DoesNotExist:  # Due to using PK no need to catch multiple objects
+                booking = None
+                return self.render(request, template='booking/booking_not_found.html')
+            if request.method == 'POST':
+                booking.update_status(BookingRecord.BookingRecordStatus.CANCELLED)
+                return redirect(self.url)
+            else:
+                return self.render(request,
+                                   context_overrides={
+                                       'title': 'Confirm Cancellation',
+                                       'booking': booking,
+                                   },
+                                   template='booking/cancel_booking.html',
                                    )
 
 class BookingCalendar(Page):

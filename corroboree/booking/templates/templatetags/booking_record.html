@@ -5,28 +5,21 @@
     {% if render_mode == 'IN_PROGRESS' %}
 	<th>Edit Booking</th>
     {% endif %}
-    {% if render_mode == 'SUMMARY' %}
-	<th>Status</th>
-    {% endif %}
-    {% if render_mode == 'COST_SUMMARY' or render_mode == 'FULL' %}
-	<th>Cost</th>
-    {% endif %}
     {% if render_mode == 'FULL' or render_mode == 'SUMMARY' %}
+	<th>Cost<th>
 	<th>Member in Attendance</th>
 	<th>Other Attendees</th>
+    {% endif %}
+    {% if render_mode == 'SUMMARY' %}
+        <th>Pay</th>
     {% endif %}
 {% endcomment %}
 
 <td>{{ start_date }}</td>
 <td>{{ end_date }}</td>
 <td>{% for room in rooms %}Room {{room}}{% if not forloop.last %}<br>{% endif %}{% endfor %}</td>
-{% if render_mode == 'SUMMARY' %}
-    <td>{{ status }}</td>
-{% endif %}
-{% if render_mode == 'COST_SUMMARY' or render_mode == 'FULL' %}
-    <td>${{ cost }}</td>
-{% endif %}
 {% if render_mode == 'FULL' or render_mode == 'SUMMARY' %}
+    <td>${{ cost }}</td>
     <td>{{member_in_attendance.first_name}} {{member_in_attendance.last_name}}</td>
     <td>{% for _, guest in attendees.items %}{{guest.first_name}} {{guest.last_name}}{% if not forloop.last %}, {% endif %}{% endfor %}</td>
 {% endif %}
