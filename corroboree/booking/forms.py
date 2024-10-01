@@ -151,7 +151,7 @@ class BookingRecordMemberInAttendanceForm(forms.Form):
     def __init__(self, *args, member=None, **kwargs):
         super().__init__(*args, **kwargs)
         if member is not None:
-            queryset = config.Member.objects.get(pk=member).family.all()
+            queryset = config.Member.objects.get(pk=member.share_number).family.all()
             self.fields['member_in_attendance'].queryset = queryset
 
 

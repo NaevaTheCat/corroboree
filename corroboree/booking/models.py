@@ -43,7 +43,7 @@ class BookingRecord(models.Model):
     rooms = models.ManyToManyField(config.Room)
     member_in_attendance = models.ForeignKey(config.FamilyMember, on_delete=models.PROTECT, related_name="bookings",
                                              null=True)
-    other_attendees = models.JSONField(default=dict, blank=True)  # {{first:, last:, contact:}}
+    other_attendees = models.JSONField(default=dict, blank=True)  # {guest_n: {first_name:, last_name:, contact_email:}}
     cost = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus,
                                       default=BookingRecordPaymentStatus.NOT_ISSUED)
@@ -75,6 +75,16 @@ class BookingRecord(models.Model):
             else:
                 cost += self.rooms.count() * booking_type.rate
         self.cost = cost
+        self.save()
+
+    def update_payment_status(self, status: BookingRecordPaymentStatus):
+        # TODO: validate allowed state transition
+        self.payment_status = status
+        self.save()
+
+    def update_status(self, status: BookingRecordStatus):
+        # TODO: validate allowed state transitions
+        self.status = status
         self.save()
 
 
@@ -277,7 +287,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 booking = None
                 return self.render(request, template='booking/booking_not_found.html')
             # make a form
-            member_in_attendance_form = BookingRecordMemberInAttendanceForm()
+            member_in_attendance_form = BookingRecordMemberInAttendanceForm(member=member)
             max_attendees = booking.rooms.aggregate(max_occupants=Sum('room_type__max_occupants'))['max_occupants']
             GuestFormSet = formset_factory(GuestForm, extra=max_attendees - 1)
             if request.method == 'POST':  # User has submitted the guest form
@@ -331,14 +341,19 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 booking = None
                 return self.render(request,
                                    template='booking/booking_not_found.html')  # TODO: Mod template for url message
-            return self.render(request,
-                               context_overrides={
-                                   'title': 'Confirm and Pay',
-                                   'booking': booking,
-                               },
-                               template='booking/pay_booking.html',
-                               )
-
+            if request.method == 'POST':
+                booking.update_payment_status(BookingRecord.BookingRecordPaymentStatus.PAID)
+                booking.update_status(BookingRecord.BookingRecordStatus.FINALISED)
+                send_confirmation_email(booking)
+                return redirect(self.url)
+            else:
+                return self.render(request,
+                                   context_overrides={
+                                       'title': 'Confirm and Pay',
+                                       'booking': booking,
+                                   },
+                                   template='booking/pay_booking.html',
+                                   )
 
 class BookingCalendar(Page):
     pass
@@ -424,14 +439,21 @@ def send_confirmation_email(booking: BookingRecord):  # TODO: do less in the tem
         end=booking.end_date,
     )
     from_email = 'Neige <neige.email@example.com>'
-    to_email = booking.member.contact_email
-    html_message = render_to_string('email/confirmation_mail_template.html', {'booking': booking})
+    recipients = [booking.member.contact_email]
+    if booking.member_in_attendance != booking.member:
+        recipients.append(booking.member_in_attendance.contact_email)
+    attendees = list(booking.other_attendees.values())
+    attendees = [x for x in attendees if x['first_name'] != '' and x['last_name'] != '' and x['email_contact'] != '']
+    html_message = render_to_string(
+        'email/confirmation_mail_template.html',
+        {'booking': booking, 'attendees': attendees}
+    )
     plain_message = strip_tags(html_message)
     send_mail(
         subject,
         plain_message,
         from_email,
-        [to_email],
+        recipients,
         html_message=html_message,
     )
 
