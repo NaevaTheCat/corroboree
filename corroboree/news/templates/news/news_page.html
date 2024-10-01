@@ -7,7 +7,7 @@
 	{% with post=post.specific %}
 	    <div class='news-post'>
 		<h3>{{ post.title }}</h3>
-		<h4>{{ post.pub_date }}</h4>
+		<h4>{{ post.pub_date | date:'F Y'}}</h4>
 		{{ post.body|richtext }}
 	    </div>
 	{% endwith %}

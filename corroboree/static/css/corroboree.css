@@ -88,3 +88,11 @@ input[type=button]:hover,
 input[type=submit]:hover {
   background-color: #6ec7c7;
 }
+
+.news-post {
+    margin-left: 40px;
+}
+
+.news-post h3 {
+  text-indent: -40px;
+}
