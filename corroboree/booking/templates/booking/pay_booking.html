@@ -25,5 +25,8 @@
 	</table>
     </div>
     
-    <h2> paypal button goes here <h2>
+    <form method='post' action=''>
+      {% csrf_token %}
+      <button type="submit">Pay ${{ booking.cost }}</button>
+    </form>
 {% endblock %}
