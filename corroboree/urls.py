@@ -10,6 +10,7 @@ from search import views as search_views
 
 from django.contrib.auth import views as auth_views
 from two_factor import views as two_factor_views
+import corroboree.booking.views as booking_views
 
 urlpatterns = [
     path("django-admin/", admin.site.urls),
@@ -24,6 +25,8 @@ urlpatterns = [
     path('account/password_reset/done/', auth_views.PasswordResetDoneView.as_view(), name='password_reset_done'),
     path('account/reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(), name='password_reset_confirm'),
     path('account/reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
+    path('api/create-order/<int:booking_id>/', booking_views.create_booking_order, name='create-order'),
+    path('api/capture-order/', booking_views.capture_booking_order, name='capture-order'),
 ]
 
 

@@ -2,8 +2,10 @@
 
 {% load wagtailcore_tags %}
 {% load booking_record_tags %}
+{% load static %}
 
 {% block content %}
+    <input type='hidden' id='booking-id' value='{{ booking.id }}'>
     <h1> pay for booking: {{ booking }} </h1>
     <div class="booking-summary-table">
 	<table border=1>
@@ -29,4 +31,10 @@
       {% csrf_token %}
       <button type="submit">Pay ${{ booking.cost }}</button>
     </form>
+    <div id="paypal-button-container">
+    <script
+        src="https://www.paypal.com/sdk/js?client-id=AfC2bM_5qEcfyrX57WGn5N8lqg_FcNchmt_NAB5lTNILj4Ysboo6BEUNtnbJ6SlnYtJJiHuwZUtSV0_u&components=buttons&currency=AUD"
+    ></script>
+    <script src="{% static 'pay/app.js' %}"></script>
+    </div>
 {% endblock %}
