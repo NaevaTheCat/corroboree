@@ -24,7 +24,7 @@ PAYPAL_CLIENT_ID = os.getenv('PAYPAL_CLIENT_ID')
 PAYPAL_CLIENT_SECRET = os.getenv('PAYPAL_CLIENT_SECRET')
 PAYPAL_MERCHANT_EMAIL = os.getenv('PAYPAL_MERCHANT_EMAIL')
 PAYPAL_MERCHANT_ID = os.getenv('PAYPAL_MERCHANT_ID')
-
+SECURE_CROSS_ORIGIN_OPENER_POLICY='same-origin-allow-popups' # fixes paypal popup
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 

@@ -1,4 +1,4 @@
-window.paypal
+paypal
     .Buttons({
         style: {
             shape: "rect",
@@ -18,6 +18,9 @@ window.paypal
             }).then(function(res) {
 		return res.json();
 	    }).then(function(orderData) {
+		// Store the relevant URLs defined in the order
+		sessionStorage.setItem('return_url', orderData.return_url);
+		sessionStorage.setItem('cancel_url', orderData.cancel_url);
 		return orderData.id;
 	    });
 	},
@@ -38,7 +41,12 @@ window.paypal
 		    return res.json();
 		}).then(function(orderData) {
 		    console.log('Capture result', orderData);
+		    window.location.href = sessionStorage.getItem('return_url'); // Redirect to the return URL
 		});
+	},
+	onCancel: function(data, actions) {
+            // Redirect to the cancel URL
+            window.location.href = sessionStorage.getItem('cancel_url');
 	}
     }).render("#paypal-button-container"); 
 

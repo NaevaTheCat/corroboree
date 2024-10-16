@@ -12,6 +12,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.html import strip_tags
 from django.views.decorators.csrf import csrf_protect
+from django.http import Http404, HttpResponseServerError
 from wagtail.admin.panels import FieldPanel, FieldRowPanel, MultiFieldPanel
 from wagtail.contrib.routable_page.models import RoutablePageMixin, path
 from wagtail.fields import RichTextField
@@ -47,6 +48,7 @@ class BookingRecord(models.Model):
     cost = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus,
                                       default=BookingRecordPaymentStatus.NOT_ISSUED)
+    paypal_transaction_id = models.CharField(max_length=20, blank=True)
     status = models.CharField(max_length=2, choices=BookingRecordStatus)
 
     def __str__(self):
@@ -77,9 +79,11 @@ class BookingRecord(models.Model):
         self.cost = cost
         self.save()
 
-    def update_payment_status(self, status: BookingRecordPaymentStatus):
+    def update_payment_status(self, status: BookingRecordPaymentStatus, transaction_id=None):
         # TODO: validate allowed state transition
         self.payment_status = status
+        if transaction_id is not None:
+            self.paypal_transaction_id = transaction_id
         self.save()
 
     def update_status(self, status: BookingRecordStatus):
@@ -220,6 +224,12 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                                   help_text='Text to introduce upcoming bookings if any exist')
     edit_text = RichTextField(blank=True,
                               help_text='Text to display when editing a booking')
+    pay_text = RichTextField(blank=True,
+                             help_text='Text to display at the payment page')
+    payment_success_text = RichTextField(blank=True,
+                                         help_text='Text to display after a successful payment')
+    payment_error_text = RichTextField(blank=True,
+                                       help_text='Text to display if the success page is displaying an unpaid booking')
     not_found_text = RichTextField(blank=True,
                                    help_text='Text to display when linked booking is not theirs or editable')
     no_bookings_text = RichTextField(blank=True)
@@ -236,6 +246,11 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
         MultiFieldPanel(heading='Booking Edit Page', children=(
             FieldPanel('edit_text'),
             FieldPanel('not_found_text'),
+        )),
+        MultiFieldPanel(heading='Booking Payment Flow', children=(
+            FieldPanel('pay_text'),
+            FieldPanel('payment_success_text'),
+            FieldPanel('payment_error_text'),
         )),
         MultiFieldPanel(heading='Booking Cancellation Page', children=(
             FieldPanel('cancel_text'),
@@ -346,19 +361,40 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 booking = None
                 return self.render(request,
                                    template='booking/booking_not_found.html')  # TODO: Mod template for url message
-            if request.method == 'POST':
-                booking.update_payment_status(BookingRecord.BookingRecordPaymentStatus.PAID)
-                booking.update_status(BookingRecord.BookingRecordStatus.FINALISED)
-                send_confirmation_email(booking)
-                return redirect(self.url)
-            else:
+            return self.render(request,
+                               context_overrides={
+                                   'title': 'Confirm and Pay',
+                                   'booking': booking,
+                               },
+                               template='booking/pay_booking.html',
+                               )
+
+    @path('pay/success/')
+    def booking_thanks_page(self, request):
+        booking_id = request.GET.get('booking')
+        if request.user.is_verified:
+            member = request.user.member
+            if not booking_id:
+                raise Http404("Booking ID not provided")
+            try:
+                booking = BookingRecord.objects.get(
+                    pk=booking_id,
+                    member=member,
+                )
+            except BookingRecord.DoesNotExist:
                 return self.render(request,
-                                   context_overrides={
-                                       'title': 'Confirm and Pay',
-                                       'booking': booking,
-                                   },
-                                   template='booking/pay_booking.html',
-                                   )
+                                   template='booking/booking_not_found.html')
+            paid = False
+            if booking.status == BookingRecord.BookingRecordStatus.FINALISED and booking.payment_status == BookingRecord.BookingRecordPaymentStatus.PAID:
+                paid = True
+            return self.render(request,
+                               context_overrides={
+                                   'title': 'Thanks for Paying',
+                                   'booking': booking,
+                                   'paid': paid,
+                               },
+                               template='booking/booking_thanks.html',
+                               )
 
     @path('cancel/<int:booking_id>/')
     def booking_delete_page(self, request, booking_id=None):
@@ -393,6 +429,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                                    },
                                    template='booking/cancel_booking.html',
                                    )
+
 
 class BookingCalendar(Page):
     pass

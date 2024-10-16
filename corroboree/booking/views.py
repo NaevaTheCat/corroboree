@@ -1,4 +1,4 @@
-from corroboree.booking.utils import create_order, capture_order
+from corroboree.booking.models import BookingRecord
 
 from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
@@ -24,6 +24,7 @@ from paypalserversdk.models.shipping_preference import ShippingPreference
 from paypalserversdk.paypalserversdk_client import PaypalserversdkClient, Environment
 from paypalserversdk.exceptions.error_exception import ErrorException
 from paypalserversdk.exceptions.api_exception import APIException
+from paypalserversdk.models.payee_payment_method_preference import PayeePaymentMethodPreference
 
 PAYPAL_CLIENT_ID = settings.PAYPAL_CLIENT_ID
 PAYPAL_CLIENT_SECRET = settings.PAYPAL_CLIENT_SECRET
@@ -48,7 +49,8 @@ client = PaypalserversdkClient(
             log_body=True
         ),
         response_logging_config=ResponseLoggingConfiguration(
-            log_headers=True
+            log_headers=True,
+            log_body=True,
         )
     )
 )
@@ -59,8 +61,8 @@ def create_booking_order(request, booking_id):
         booking = BookingRecord.objects.get(id=booking_id)
         cost = booking.cost
         # TODO: fix this to fetch url parts via page object lookup?
-        return_url = request.build_absolute_uri('/') + '/my-bookings/pay/' + str(booking_id) +'/'# + '/success/'
-        cancel_url = request.build_absolute_uri('/') + '/my-bookings/cancel/' + str(booking_id) +'/'
+        return_url = request.build_absolute_uri('/') + 'my-bookings/pay/success/?booking=' + str(booking_id)
+        cancel_url = request.build_absolute_uri('/') + 'my-bookings/cancel/' + str(booking_id) + '/'
         billing_reference = booking.id
     except BookingRecord.DoesNotExist:
         return JsonResponse({'error': 'Booking not found'}, status=404)
@@ -74,7 +76,8 @@ def create_booking_order(request, booking_id):
                         currency_code='AUD',
                         value=str(cost)
                     ),
-                    invoice_id=billing_reference,
+                    custom_id=billing_reference,
+                    description='Neigejindi booking: %s' % booking_id,
                     payee=Payee(
                         email_address=PAYPAL_MERCHANT_EMAIL,
                         merchant_id=PAYPAL_MERCHANT_ID
@@ -88,7 +91,8 @@ def create_booking_order(request, booking_id):
                         return_url=return_url,
                         cancel_url=cancel_url,
                         brand_name='Neige Investments PTY Limited',
-                        user_action=PayPalExperienceUserAction.PAY_NOW
+                        user_action=PayPalExperienceUserAction.PAY_NOW,
+                        # payment_method_preference=PayeePaymentMethodPreference.UNRESTRICTED,
                     )
                 )
             )
@@ -98,7 +102,10 @@ def create_booking_order(request, booking_id):
     }
     try:
         result = orders_controller.orders_create(collect)
-        return JsonResponse(json.loads(result.text))
+        response_data = json.loads(result.text)
+        response_data['return_url'] = return_url
+        response_data['cancel_url'] = cancel_url
+        return JsonResponse(response_data)
     except ErrorException as e:
         return JsonResponse({'error': e.message}, status=e.response_code)
     except APIException as e:
@@ -115,8 +122,14 @@ def capture_booking_order(request):
     }
     try:
         result = orders_controller.orders_capture(collect)
-        return JsonResponse(json.loads(result.text))
+        response_data = json.loads(result.text)
+        booking_id = response_data['purchase_units'][0]['payments']['captures'][0]['custom_id']  # booking id associated with capture
+        transaction_id = response_data['purchase_units'][0]['payments']['captures'][0]['id']
+        booking = BookingRecord.objects.get(id=booking_id)
+        booking.update_payment_status(BookingRecord.BookingRecordPaymentStatus.PAID, transaction_id=transaction_id)
+        booking.update_status(BookingRecord.BookingRecordStatus.FINALISED)
+        return JsonResponse(response_data)
     except ErrorException as e:
-        print(e)
+        return JsonResponse({'error': e.message}, status=e.response_code)
     except APIException as e:
-        print(e)
+        return JsonResponse({'error': e.reason}, status=e.response_code)
