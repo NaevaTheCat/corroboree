@@ -18,10 +18,15 @@ paypal
             }).then(function(res) {
 		return res.json();
 	    }).then(function(orderData) {
+		if (orderData.error) {
+		    throw new Error(orderData.error);
+		}
 		// Store the relevant URLs defined in the order
 		sessionStorage.setItem('return_url', orderData.return_url);
 		sessionStorage.setItem('cancel_url', orderData.cancel_url);
 		return orderData.id;
+	    }).catch(function(error){
+		displayError('Error creating order: ' + error.message);
 	    });
 	},
 
@@ -40,8 +45,13 @@ paypal
 		}).then(function(res) {
 		    return res.json();
 		}).then(function(orderData) {
+		    if (orderData.error) {
+			throw new Error(orderData.error);
+		    }
 		    console.log('Capture result', orderData);
 		    window.location.href = sessionStorage.getItem('return_url'); // Redirect to the return URL
+		}).catch(function(error) {
+		    displayError('Error capturing order: ' + error.message);
 		});
 	},
 	onCancel: function(data, actions) {
@@ -63,4 +73,10 @@ function getCookie(name) {
 	}
     }
     return cookieValue;
+}
+
+function displayError(message) {
+    const errorContainer = document.getElementById('error-container');
+    errorContainer.innerText = message;
+    errorContainer.style.display = 'block';
 }
