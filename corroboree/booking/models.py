@@ -479,7 +479,7 @@ def bookings_for_member_in_range(member: config.Member, start_date: date, end_da
     return bookings
 
 
-def dates_to_weeks(start_date: date, end_date: date, week_start_day=6) -> (int, int, int):
+def dates_to_weeks(start_date: date, end_date: date, week_start_day=5) -> (int, int, int):
     """For a date range and day of week return the number of weeks and surrounding 'spare' days
 
     Using datetime weekday ints monday=0 sunday=6.
