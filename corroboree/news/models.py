@@ -1,5 +1,5 @@
 from django.db import models
-from django.utils import timezone
+import django.utils.timezone
 from wagtail.admin.panels import FieldPanel
 from wagtail.fields import RichTextField
 from wagtail.models import Page
@@ -21,7 +21,7 @@ class NewsPage(Page):
 
 class NewsPagePost(Page):
     body = RichTextField()
-    pub_date = models.DateField("Post date", default=timezone.now())
+    pub_date = models.DateField("Post date", default=django.utils.timezone.now)
 
     content_panels = Page.content_panels + [
         FieldPanel('pub_date'),
