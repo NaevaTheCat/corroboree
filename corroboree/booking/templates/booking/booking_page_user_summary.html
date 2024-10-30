@@ -39,14 +39,14 @@
 			<th>Cost</th>
 			<th>Member in Attendance</th>
 			<th>Guests</th>
-			<th>Pay</th>
+			<th>Pay/Edit</th>
 		    </tr>
 		</thead>
 		<tbody>
 		    {% for booking in submitted_bookings %}
 			<tr>
 			    {% render_booking_record booking 'SUMMARY' %}
-			    <td><a href='{% pageurl page %}pay/{{ booking.pk }}'>Pay</a> | <a href='{% pageurl page %}cancel/{{ booking.pk }}'>Cancel</td>
+			    <td><a href='{% pageurl page %}pay/{{ booking.pk }}'>Pay</a> | <a href="{% pageurl page %}edit/{{ booking.pk }}">Edit</a> | <a href='{% pageurl page %}cancel/{{ booking.pk }}'>Cancel</td>
 			</tr>
 		    {% endfor %}
 		</tbody>
@@ -65,12 +65,14 @@
 			<th>Cost</th>
 			<th>Member in Attendance</th>
 			<th>Guests</th>
+			<th>Edit Attendees</th>
 		    </tr>
 		</thead>
 		<tbody>
 		    {% for booking in upcoming_bookings %}
 			<tr>
 			    {% render_booking_record booking 'FULL' %}
+			    <td><a href="{% pageurl page %}edit/{{ booking.pk }}">Edit</a></td>
 			</tr>
 		    {% endfor %}
 		</tbody>
