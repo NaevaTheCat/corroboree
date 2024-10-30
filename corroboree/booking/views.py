@@ -128,6 +128,7 @@ def capture_booking_order(request):
         booking = BookingRecord.objects.get(id=booking_id)
         booking.update_payment_status(BookingRecord.BookingRecordPaymentStatus.PAID, transaction_id=transaction_id)
         booking.update_status(BookingRecord.BookingRecordStatus.FINALISED)
+        booking.send_confirmation_email()
         return JsonResponse(response_data)
     except ErrorException as e:
         return JsonResponse({'error': e.message}, status=e.response_code)

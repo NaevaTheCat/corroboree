@@ -91,6 +91,32 @@ class BookingRecord(models.Model):
         self.status = status
         self.save()
 
+    def send_confirmation_email(self):  # TODO: do less in the template, more here in the context
+        """Format and send an email using a django template"""
+        subject = 'Neige Booking Confirmation: {start} - {end}'.format(
+            start=self.start_date,
+            end=self.end_date,
+        )
+        from_email = 'Neige <neige.email@example.com>'
+        recipients = [self.member.contact_email]
+        if self.member_in_attendance.contact_email != self.member.contact_email:
+            recipients.append(self.member_in_attendance.contact_email)
+        attendees = list(self.other_attendees.values())
+        attendees = [x for x in attendees if
+                     x['first_name'] != '' and x['last_name'] != '' and x['email_contact'] != '']
+        html_message = render_to_string(
+            'email/confirmation_mail_template.html',
+            {'booking': self, 'attendees': attendees}
+        )
+        plain_message = strip_tags(html_message)
+        send_mail(
+            subject,
+            plain_message,
+            from_email,
+            recipients,
+            html_message=html_message,
+        )
+
 
 class BookingRecordViewSet(SnippetViewSet):
     model = BookingRecord
@@ -506,32 +532,6 @@ def seasons_to_season_on_day(seasons: [config.Season], day: date) -> config.Seas
     else:
         raise ValueError('Somehow multiple seasons apply?: %s' % season_on_day)
     return season_on_day
-
-
-def send_confirmation_email(booking: BookingRecord):  # TODO: do less in the template, more here in the context
-    """Format and send an email using a django template"""
-    subject = 'Neige Booking Confirmation: {start} - {end}'.format(
-        start=booking.start_date,
-        end=booking.end_date,
-    )
-    from_email = 'Neige <neige.email@example.com>'
-    recipients = [booking.member.contact_email]
-    if booking.member_in_attendance != booking.member:
-        recipients.append(booking.member_in_attendance.contact_email)
-    attendees = list(booking.other_attendees.values())
-    attendees = [x for x in attendees if x['first_name'] != '' and x['last_name'] != '' and x['email_contact'] != '']
-    html_message = render_to_string(
-        'email/confirmation_mail_template.html',
-        {'booking': booking, 'attendees': attendees}
-    )
-    plain_message = strip_tags(html_message)
-    send_mail(
-        subject,
-        plain_message,
-        from_email,
-        recipients,
-        html_message=html_message,
-    )
 
 
 def check_season_rules(member: config.Member, start_date: datetime.date, end_date: datetime.date, rooms: [config.Room]):
