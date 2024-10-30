@@ -2,12 +2,14 @@
 
 {% load wagtailcore_tags %}
 {% load booking_record_tags %}
-{% load paypal_tags %}
 {% load static %}
 
 {% block content %}
-    <input type='hidden' id='booking-id' value='{{ booking.id }}'>
-    {{ page.pay_text | richtext }}
+    {% if paid  %}
+	{{ page.payment_success_text | richtext }}
+    {% else %}
+	{{ page.payment_error_text | richtext }}
+    {% endif %}
     <div class="booking-summary-table">
 	<table border=1>
 	    <thead>
@@ -27,12 +29,5 @@
 	    </tbody>
 	</table>
     </div>
-
-    <div id="error-container" style="display:none; color:red;"></div>
-    <div id="paypal-button-container">
-    <script
-        src="https://www.paypal.com/sdk/js?client-id={% paypal_client_id %}&components=buttons&currency=AUD"
-    ></script>
-    <script src="{% static 'pay/app.js' %}"></script>
-    </div>
 {% endblock %}
+

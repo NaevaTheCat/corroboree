@@ -12,6 +12,7 @@ from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.html import strip_tags
 from django.views.decorators.csrf import csrf_protect
+from django.http import Http404, HttpResponseServerError
 from wagtail.admin.panels import FieldPanel, FieldRowPanel, MultiFieldPanel
 from wagtail.contrib.routable_page.models import RoutablePageMixin, path
 from wagtail.fields import RichTextField
@@ -47,6 +48,7 @@ class BookingRecord(models.Model):
     cost = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus,
                                       default=BookingRecordPaymentStatus.NOT_ISSUED)
+    paypal_transaction_id = models.CharField(max_length=20, blank=True)
     status = models.CharField(max_length=2, choices=BookingRecordStatus)
 
     def __str__(self):
@@ -77,15 +79,43 @@ class BookingRecord(models.Model):
         self.cost = cost
         self.save()
 
-    def update_payment_status(self, status: BookingRecordPaymentStatus):
+    def update_payment_status(self, status: BookingRecordPaymentStatus, transaction_id=None):
         # TODO: validate allowed state transition
         self.payment_status = status
+        if transaction_id is not None:
+            self.paypal_transaction_id = transaction_id
         self.save()
 
     def update_status(self, status: BookingRecordStatus):
         # TODO: validate allowed state transitions
         self.status = status
         self.save()
+
+    def send_confirmation_email(self):  # TODO: do less in the template, more here in the context
+        """Format and send an email using a django template"""
+        subject = 'Neige Booking Confirmation: {start} - {end}'.format(
+            start=self.start_date,
+            end=self.end_date,
+        )
+        from_email = 'Neige <neige.email@example.com>'
+        recipients = [self.member.contact_email]
+        if self.member_in_attendance.contact_email != self.member.contact_email:
+            recipients.append(self.member_in_attendance.contact_email)
+        attendees = list(self.other_attendees.values())
+        attendees = [x for x in attendees if
+                     x['first_name'] != '' and x['last_name'] != '' and x['email_contact'] != '']
+        html_message = render_to_string(
+            'email/confirmation_mail_template.html',
+            {'booking': self, 'attendees': attendees}
+        )
+        plain_message = strip_tags(html_message)
+        send_mail(
+            subject,
+            plain_message,
+            from_email,
+            recipients,
+            html_message=html_message,
+        )
 
 
 class BookingRecordViewSet(SnippetViewSet):
@@ -220,6 +250,12 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                                   help_text='Text to introduce upcoming bookings if any exist')
     edit_text = RichTextField(blank=True,
                               help_text='Text to display when editing a booking')
+    pay_text = RichTextField(blank=True,
+                             help_text='Text to display at the payment page')
+    payment_success_text = RichTextField(blank=True,
+                                         help_text='Text to display after a successful payment')
+    payment_error_text = RichTextField(blank=True,
+                                       help_text='Text to display if the success page is displaying an unpaid booking')
     not_found_text = RichTextField(blank=True,
                                    help_text='Text to display when linked booking is not theirs or editable')
     no_bookings_text = RichTextField(blank=True)
@@ -236,6 +272,11 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
         MultiFieldPanel(heading='Booking Edit Page', children=(
             FieldPanel('edit_text'),
             FieldPanel('not_found_text'),
+        )),
+        MultiFieldPanel(heading='Booking Payment Flow', children=(
+            FieldPanel('pay_text'),
+            FieldPanel('payment_success_text'),
+            FieldPanel('payment_error_text'),
         )),
         MultiFieldPanel(heading='Booking Cancellation Page', children=(
             FieldPanel('cancel_text'),
@@ -346,19 +387,40 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 booking = None
                 return self.render(request,
                                    template='booking/booking_not_found.html')  # TODO: Mod template for url message
-            if request.method == 'POST':
-                booking.update_payment_status(BookingRecord.BookingRecordPaymentStatus.PAID)
-                booking.update_status(BookingRecord.BookingRecordStatus.FINALISED)
-                send_confirmation_email(booking)
-                return redirect(self.url)
-            else:
+            return self.render(request,
+                               context_overrides={
+                                   'title': 'Confirm and Pay',
+                                   'booking': booking,
+                               },
+                               template='booking/pay_booking.html',
+                               )
+
+    @path('pay/success/')
+    def booking_thanks_page(self, request):
+        booking_id = request.GET.get('booking')
+        if request.user.is_verified:
+            member = request.user.member
+            if not booking_id:
+                raise Http404("Booking ID not provided")
+            try:
+                booking = BookingRecord.objects.get(
+                    pk=booking_id,
+                    member=member,
+                )
+            except BookingRecord.DoesNotExist:
                 return self.render(request,
-                                   context_overrides={
-                                       'title': 'Confirm and Pay',
-                                       'booking': booking,
-                                   },
-                                   template='booking/pay_booking.html',
-                                   )
+                                   template='booking/booking_not_found.html')
+            paid = False
+            if booking.status == BookingRecord.BookingRecordStatus.FINALISED and booking.payment_status == BookingRecord.BookingRecordPaymentStatus.PAID:
+                paid = True
+            return self.render(request,
+                               context_overrides={
+                                   'title': 'Thanks for Paying',
+                                   'booking': booking,
+                                   'paid': paid,
+                               },
+                               template='booking/booking_thanks.html',
+                               )
 
     @path('cancel/<int:booking_id>/')
     def booking_delete_page(self, request, booking_id=None):
@@ -394,6 +456,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                                    template='booking/cancel_booking.html',
                                    )
 
+
 class BookingCalendar(Page):
     pass
 
@@ -416,7 +479,7 @@ def bookings_for_member_in_range(member: config.Member, start_date: date, end_da
     return bookings
 
 
-def dates_to_weeks(start_date: date, end_date: date, week_start_day=6) -> (int, int, int):
+def dates_to_weeks(start_date: date, end_date: date, week_start_day=5) -> (int, int, int):
     """For a date range and day of week return the number of weeks and surrounding 'spare' days
 
     Using datetime weekday ints monday=0 sunday=6.
@@ -469,32 +532,6 @@ def seasons_to_season_on_day(seasons: [config.Season], day: date) -> config.Seas
     else:
         raise ValueError('Somehow multiple seasons apply?: %s' % season_on_day)
     return season_on_day
-
-
-def send_confirmation_email(booking: BookingRecord):  # TODO: do less in the template, more here in the context
-    """Format and send an email using a django template"""
-    subject = 'Neige Booking Confirmation: {start} - {end}'.format(
-        start=booking.start_date,
-        end=booking.end_date,
-    )
-    from_email = 'Neige <neige.email@example.com>'
-    recipients = [booking.member.contact_email]
-    if booking.member_in_attendance != booking.member:
-        recipients.append(booking.member_in_attendance.contact_email)
-    attendees = list(booking.other_attendees.values())
-    attendees = [x for x in attendees if x['first_name'] != '' and x['last_name'] != '' and x['email_contact'] != '']
-    html_message = render_to_string(
-        'email/confirmation_mail_template.html',
-        {'booking': booking, 'attendees': attendees}
-    )
-    plain_message = strip_tags(html_message)
-    send_mail(
-        subject,
-        plain_message,
-        from_email,
-        recipients,
-        html_message=html_message,
-    )
 
 
 def check_season_rules(member: config.Member, start_date: datetime.date, end_date: datetime.date, rooms: [config.Room]):
