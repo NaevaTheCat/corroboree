@@ -148,17 +148,19 @@ class MiAModelChoiceField(forms.ModelChoiceField):
 class BookingRecordMemberInAttendanceForm(forms.Form):
     member_in_attendance = MiAModelChoiceField(queryset=config.FamilyMember.objects.all())
 
-    def __init__(self, *args, member=None, **kwargs):
+    def __init__(self, *args, member=None, member_in_attendance=None, **kwargs):
         super().__init__(*args, **kwargs)
         if member is not None:
             queryset = config.Member.objects.get(pk=member.share_number).family.all()
             self.fields['member_in_attendance'].queryset = queryset
+        if member_in_attendance is not None:
+            self.fields['member_in_attendance'].initial = member_in_attendance
 
 
 class GuestForm(forms.Form):
-    first_name = forms.CharField(max_length=64)
-    last_name = forms.CharField(max_length=64)
-    email = forms.EmailField(label='Contact Email')
+    first_name = forms.CharField(max_length=64, required=False)
+    last_name = forms.CharField(max_length=64, required=False)
+    email = forms.EmailField(label='Contact Email', required=False)
 
 
 def last_weekday_date(date: datetime.date, weekday=6):

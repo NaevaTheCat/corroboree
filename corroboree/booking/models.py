@@ -91,19 +91,20 @@ class BookingRecord(models.Model):
         self.status = status
         self.save()
 
-    def send_confirmation_email(self):  # TODO: do less in the template, more here in the context
+    def send_confirmation_email(self, subject=None):  # TODO: do less in the template, more here in the context
         """Format and send an email using a django template"""
-        subject = 'Neige Booking Confirmation: {start} - {end}'.format(
-            start=self.start_date,
-            end=self.end_date,
-        )
+        if subject is None:
+            subject = 'Neige Booking Confirmation: {start} - {end}'.format(
+                start=self.start_date,
+                end=self.end_date,
+            )
         from_email = 'Neige <neige.email@example.com>'
         recipients = [self.member.contact_email]
         if self.member_in_attendance.contact_email != self.member.contact_email:
             recipients.append(self.member_in_attendance.contact_email)
         attendees = list(self.other_attendees.values())
         attendees = [x for x in attendees if
-                     x['first_name'] != '' and x['last_name'] != '' and x['email_contact'] != '']
+                     x['first_name'] != '' and x['last_name'] != '' and x['email'] != '']
         html_message = render_to_string(
             'email/confirmation_mail_template.html',
             {'booking': self, 'attendees': attendees}
@@ -327,35 +328,54 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 booking = BookingRecord.objects.get(
                     pk=booking_id,
                     member=member,
-                    status=BookingRecord.BookingRecordStatus.IN_PROGRESS
+                    status__in=[
+                        BookingRecord.BookingRecordStatus.IN_PROGRESS,
+                        BookingRecord.BookingRecordStatus.SUBMITTED,
+                        BookingRecord.BookingRecordStatus.FINALISED,
+                    ]
                 )
             except BookingRecord.DoesNotExist:  # Due to using PK no need to catch multiple objects
                 booking = None
                 return self.render(request, template='booking/booking_not_found.html')
             # make a form
-            member_in_attendance_form = BookingRecordMemberInAttendanceForm(member=member)
+            if booking.status != BookingRecord.BookingRecordStatus.FINALISED:
+                member_in_attendance_form = BookingRecordMemberInAttendanceForm(member=member, member_in_attendance=booking.member_in_attendance)
+            else:
+                member_in_attendance_form = None
             max_attendees = booking.rooms.aggregate(max_occupants=Sum('room_type__max_occupants'))['max_occupants']
-            GuestFormSet = formset_factory(GuestForm, extra=max_attendees - 1)
+            GuestFormSet = formset_factory(GuestForm, extra=max_attendees - 1, max_num=max_attendees - 1)
             if request.method == 'POST':  # User has submitted the guest form
                 guest_forms = GuestFormSet(request.POST)
-                member_in_attendance_form = BookingRecordMemberInAttendanceForm(request.POST)
-                if guest_forms.is_valid() and member_in_attendance_form.is_valid():
+                # We won't update the member in attendance for finalised bookings
+                if booking.status != BookingRecord.BookingRecordStatus.FINALISED:
+                    member_in_attendance_form = BookingRecordMemberInAttendanceForm(request.POST)
+                    if member_in_attendance_form.is_valid():
+                        member_in_attendance = member_in_attendance_form.cleaned_data['member_in_attendance']
+                        booking.member_in_attendance = member_in_attendance
+                if guest_forms.is_valid():
                     guests = {}
                     for idguest, guest in enumerate(guest_forms):
                         guests['guest_%s' % idguest] = {
                             'first_name': guest.cleaned_data.get('first_name', ''),
                             'last_name': guest.cleaned_data.get('last_name', ''),
-                            'email_contact': guest.cleaned_data.get('email', ''),
+                            'email': guest.cleaned_data.get('email', ''),
                         }
                     other_attendees = guests
-                    member_in_attendance = member_in_attendance_form.cleaned_data['member_in_attendance']
-                    booking.member_in_attendance = member_in_attendance
                     booking.other_attendees = other_attendees
-                    booking.status = BookingRecord.BookingRecordStatus.SUBMITTED
                     booking.save()
-                    return redirect(self.url + 'pay/%s' % booking_id)
+                    # Redirect users who need to pay to payment
+                    if booking.status == BookingRecord.BookingRecordStatus.IN_PROGRESS or booking.status == BookingRecord.BookingRecordStatus.SUBMITTED:
+                        booking.status = booking.update_status(BookingRecord.BookingRecordStatus.SUBMITTED)
+                        return redirect(self.url + 'pay/%s' % booking_id)
+                    else:  # Booking is already submitted or finalised
+                        booking.send_confirmation_email(subject='Neige Booking Updated: {start} - {end}'.format(
+                            start=booking.start_date,
+                            end=booking.end_date
+                        ))
+                        return redirect(self.url)
             else:
-                guest_forms = GuestFormSet()
+                attendees = list(booking.other_attendees.values())
+                guest_forms = GuestFormSet(initial=attendees)
             return self.render(request,
                                context_overrides={
                                    'title': 'Edit Booking',
