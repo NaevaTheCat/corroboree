@@ -338,13 +338,21 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 booking = None
                 return self.render(request, template='booking/booking_not_found.html')
             # make a form
-            member_in_attendance_form = BookingRecordMemberInAttendanceForm(member=member, member_in_attendance=booking.member_in_attendance)
+            if booking.status != BookingRecord.BookingRecordStatus.FINALISED:
+                member_in_attendance_form = BookingRecordMemberInAttendanceForm(member=member, member_in_attendance=booking.member_in_attendance)
+            else:
+                member_in_attendance_form = None
             max_attendees = booking.rooms.aggregate(max_occupants=Sum('room_type__max_occupants'))['max_occupants']
             GuestFormSet = formset_factory(GuestForm, extra=max_attendees - 1, max_num=max_attendees - 1)
             if request.method == 'POST':  # User has submitted the guest form
                 guest_forms = GuestFormSet(request.POST)
-                member_in_attendance_form = BookingRecordMemberInAttendanceForm(request.POST)
-                if guest_forms.is_valid() and member_in_attendance_form.is_valid():
+                # We won't update the member in attendance for finalised bookings
+                if booking.status != BookingRecord.BookingRecordStatus.FINALISED:
+                    member_in_attendance_form = BookingRecordMemberInAttendanceForm(request.POST)
+                    if member_in_attendance_form.is_valid():
+                        member_in_attendance = member_in_attendance_form.cleaned_data['member_in_attendance']
+                        booking.member_in_attendance = member_in_attendance
+                if guest_forms.is_valid():
                     guests = {}
                     for idguest, guest in enumerate(guest_forms):
                         guests['guest_%s' % idguest] = {
@@ -353,10 +361,9 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                             'email': guest.cleaned_data.get('email', ''),
                         }
                     other_attendees = guests
-                    member_in_attendance = member_in_attendance_form.cleaned_data['member_in_attendance']
-                    booking.member_in_attendance = member_in_attendance
                     booking.other_attendees = other_attendees
                     booking.save()
+                    # Redirect users who need to pay to payment
                     if booking.status == BookingRecord.BookingRecordStatus.IN_PROGRESS or booking.status == BookingRecord.BookingRecordStatus.SUBMITTED:
                         booking.status = booking.update_status(BookingRecord.BookingRecordStatus.SUBMITTED)
                         return redirect(self.url + 'pay/%s' % booking_id)

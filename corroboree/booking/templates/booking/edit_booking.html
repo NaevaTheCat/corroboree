@@ -27,7 +27,9 @@
 
     <form action="." method="POST">
 	{% csrf_token %}
-	{{ member_in_attendance_form }}
+	{% if member_in_attendance_form %}
+	    {{ member_in_attendance_form }}
+	{% endif %}
 	{{ guest_forms.management_form }}
 	{% for form in guest_forms %}
 	    <div class="guest-form">
