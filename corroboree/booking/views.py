@@ -1,9 +1,9 @@
-from corroboree.booking.models import BookingRecord
-
-from django.views.decorators.csrf import csrf_exempt
 from django.http import JsonResponse
+from django.views.decorators.http import require_GET
 import json
-from corroboree.booking.models import BookingRecord
+import datetime
+from corroboree.booking.models import BookingRecord, last_day_of_month
+from corroboree.config.models import Config
 
 import logging
 
@@ -24,7 +24,33 @@ from paypalserversdk.models.shipping_preference import ShippingPreference
 from paypalserversdk.paypalserversdk_client import PaypalserversdkClient, Environment
 from paypalserversdk.exceptions.error_exception import ErrorException
 from paypalserversdk.exceptions.api_exception import APIException
-from paypalserversdk.models.payee_payment_method_preference import PayeePaymentMethodPreference
+
+# Calendar stuff
+@require_GET
+def get_room_availability(request):
+    first_day = datetime.datetime.fromisoformat(request.GET.get('start')).date()
+    last_day = datetime.datetime.fromisoformat(request.GET.get('end')).date()
+    current_bookings = BookingRecord.objects.filter(
+        end_date__gt=first_day,
+        start_date__lte=last_day
+    ).exclude(status=BookingRecord.BookingRecordStatus.CANCELLED)
+    free_rooms = [Config.objects.get().rooms.all()] * (last_day - first_day).days
+    for this_booking in current_bookings:
+        this_rooms = this_booking.rooms.all()
+        # pad a list with the days vacant at start or end, so we know the rooms on each day
+        start_offset = (this_booking.start_date - first_day).days
+        end_offset = (this_booking.end_date - first_day).days
+        for day in range(len(free_rooms)):
+            if start_offset <= day < end_offset:
+                free_rooms[day] = free_rooms[day].difference(this_rooms)
+    data = {}
+    for x in range((last_day - first_day).days):
+        date = first_day + datetime.timedelta(x)
+        data[date.strftime('%Y-%m-%d')] = [str(x) for x in list(free_rooms[x])]
+    return JsonResponse(data)
+
+
+# Paypal order related stuff follows
 
 PAYPAL_CLIENT_ID = settings.PAYPAL_CLIENT_ID
 PAYPAL_CLIENT_SECRET = settings.PAYPAL_CLIENT_SECRET

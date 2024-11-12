@@ -478,7 +478,10 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
 
 
 class BookingCalendar(Page):
-    pass
+    content_panels = Page.content_panels
+
+    parent_page_types = ['home.HomePage']
+    subpage_types = []
 
 
 def refresh_stale_login(request, td=timedelta(days=1)):
