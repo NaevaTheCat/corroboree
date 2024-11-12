@@ -116,7 +116,7 @@ class BookingRoomChoosingForm(forms.Form):
                 else:
                     for booking_type in possible_booking_types[day]:
                         this_banned_rooms = booking_type.banned_rooms.all()
-                        # Set union all rooms and banned rooms. Only leaves rooms that aren't available in any way
+                        # Set intersection all rooms and banned rooms. Only leaves rooms that aren't available in any way
                         daily_banned_rooms = daily_banned_rooms & this_banned_rooms
                 banned_rooms = banned_rooms | daily_banned_rooms
             available_rooms = config.Room.objects.exclude(pk__in=list(booked_room_ids)).exclude(pk__in=banned_rooms)

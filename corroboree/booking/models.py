@@ -626,7 +626,7 @@ def room_occupancy_array(start_date: datetime.date, end_date: datetime.date, roo
     # on reflection this might be overkill and could probably just be a list of the sum of rooms booked on that day?
     array = []
     length = (end_date - start_date).days
-    array.append([len(rooms)] * length)
+    array.append([len(rooms)] * length)  #TODO: this is one shorter than the number of days, is that a problem?
     for this_booking in other_bookings:
         num_rooms = this_booking.rooms.all().count()
         # pad a list with the days vacant at start or end, so we know the rooms on each day
