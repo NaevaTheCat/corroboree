@@ -196,43 +196,40 @@ class BookingPage(Page):
             })
         else:
             if request.method == "POST":
-                if 'room_form' in request.POST:
-                    room_form = BookingRoomChoosingForm(
-                        request.POST,
-                        start_date=date.fromisoformat(request.POST['start_date']),
-                        end_date=date.fromisoformat(request.POST['end_date']),
-                        member=member)
-                    if room_form.is_valid():
-                        # Put the booking in the database as a hold and redirect the user to finish it
-                        booking_record = BookingRecord(
-                            member=member,
-                            start_date=room_form.cleaned_data.get('start_date'),
-                            end_date=room_form.cleaned_data.get('end_date'),
-                            member_in_attendance=None,
-                            cost=None,
-                            payment_status=BookingRecord.BookingRecordPaymentStatus.NOT_ISSUED,
-                            status=BookingRecord.BookingRecordStatus.IN_PROGRESS
-                        )
-                        booking_record.save()
-                        rooms = room_form.cleaned_data.get('room_selection')
-                        booking_record.rooms.set(rooms)
-                        booking_record.calculate_booking_cart(config.Config.objects.get())
-                        return redirect('/my-bookings/edit/%s' % booking_record.pk)
-                    # Preset the date values on the date form for consistency
-                    start_date = room_form.data.get("start_date")
-                    end_date = room_form.data.get("end_date")
-                    date_form = BookingDateRangeForm(initial={
-                        "start_date": start_date,
-                        'end_date': end_date,
-                    })
-                else:  # date form is returned
-                    date_form = BookingDateRangeForm(request.POST)
-                    if date_form.is_valid():
-                        start_date = date_form.cleaned_data.get("start_date")
-                        end_date = date_form.cleaned_data.get("end_date")
-                        room_form = BookingRoomChoosingForm(start_date=start_date, end_date=end_date, member=member)
+                room_form = BookingRoomChoosingForm(
+                    request.POST,
+                    start_date=date.fromisoformat(request.POST['start_date']),
+                    end_date=date.fromisoformat(request.POST['end_date']),
+                    member=member)
+                if room_form.is_valid():
+                    # Put the booking in the database as a hold and redirect the user to finish it
+                    booking_record = BookingRecord(
+                        member=member,
+                        start_date=room_form.cleaned_data.get('start_date'),
+                        end_date=room_form.cleaned_data.get('end_date'),
+                        member_in_attendance=None,
+                        cost=None,
+                        payment_status=BookingRecord.BookingRecordPaymentStatus.NOT_ISSUED,
+                        status=BookingRecord.BookingRecordStatus.IN_PROGRESS
+                    )
+                    booking_record.save()
+                    rooms = room_form.cleaned_data.get('room_selection')
+                    booking_record.rooms.set(rooms)
+                    booking_record.calculate_booking_cart(config.Config.objects.get())
+                    return redirect('/my-bookings/edit/%s' % booking_record.pk)
+                # Preset the date values on the date form for consistency
+                start_date = room_form.data.get("start_date")
+                end_date = room_form.data.get("end_date")
+                date_form = BookingDateRangeForm(initial={
+                    "start_date": start_date,
+                    'end_date': end_date,
+                })
             else:
-                date_form = BookingDateRangeForm()
+                date_form = BookingDateRangeForm(request.GET or None)
+                if date_form.is_valid():
+                    start_date = date_form.cleaned_data.get("start_date")
+                    end_date = date_form.cleaned_data.get("end_date")
+                    room_form = BookingRoomChoosingForm(start_date=start_date, end_date=end_date, member=member)
 
             return render(request, 'booking/select_dates.html', {
                 "page": self,
