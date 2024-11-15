@@ -29,7 +29,7 @@
 			     color = 'yellow';
 			 }
 			 events.push({
-			     title: freeRooms.length + ' rooms free',
+			     title: freeRooms.length + ' room' + (freeRooms.length === 1 ? '' : 's') + ' free',
 			     start: date,
 			     textColor: 'black',
 			     color: color,
@@ -45,6 +45,7 @@
 	 
          var calendar = new FullCalendar.Calendar(calendarEl, {
              initialView: 'dayGridMonth',
+	     locale: 'en-AU',
 	     selectable: true,
 	     datesSet: function(info) {
 		 fetchRoomAvailability(info.startStr, info.endStr);

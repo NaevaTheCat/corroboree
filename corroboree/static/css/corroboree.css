@@ -59,6 +59,20 @@ button:hover {
   background-color: #6ec7c7;
 }
 
+/* Alignment stuff */
+.container {
+    display: flex;
+}
+
+.form-container {
+    flex: 1;
+    margin-right: 20px;
+}
+
+.calendar-container {
+    flex: 2;
+}
+
 /* Form Styling */
 input[type=text],
 input[type=email] {
