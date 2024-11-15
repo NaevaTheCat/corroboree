@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+
+{% load wagtailcore_tags %}
+
+{% block content %}
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
+    <script src='https://code.jquery.com/jquery-3.6.0.min.js'></script>
+    <script src='https://unpkg.com/popper.js/dist/umd/popper.min.js'></script>
+    <script src='https://unpkg.com/tooltip.js/dist/umd/tooltip.min.js'></script>
+    <script>
+     document.addEventListener('DOMContentLoaded', function() {
+         var calendarEl = document.getElementById('calendar');
+	 
+	 function fetchRoomAvailability(start, end) {
+	     $.ajax({
+		 url: '/api/get-room-availability/',
+		 data: {
+		     start: start,
+		     end: end
+		 },
+		 success: function(data) {
+		     var events = [];
+		     for (var date in data) {
+			 var freeRooms = data[date];
+			 var colours = [
+			     '#e51f1f',
+			     '#f2a134',
+			     '#f7e379',
+			     '#bbdb44',
+			     '#44ce1b',
+			 ]
+			 var index = Math.ceil(freeRooms.length / 2)
+			 var color = colours[index]
+			 events.push({
+			     title: freeRooms.length + ' room' + (freeRooms.length === 1 ? '' : 's') + ' free',
+			     start: date,
+			     textColor: 'black',
+			     color: color,
+			     description: 'Free rooms:\n' + freeRooms.join('\n'),
+			     display: 'background',
+			 });
+		     }
+		     calendar.removeAllEvents();
+		     calendar.addEventSource(events);
+		 }
+             });
+         }
+	 
+         var calendar = new FullCalendar.Calendar(calendarEl, {
+             initialView: 'dayGridMonth',
+	     locale: 'en-AU',
+	     selectable: true,
+	     datesSet: function(info) {
+		 fetchRoomAvailability(info.startStr, info.endStr);
+             },
+	     select: function(info) {
+		 var start = info.startStr;
+		 var end = info.endStr;
+		 window.location.href = `/make-a-booking/?start_date=${start}&end_date=${end}`;
+	     },
+	     eventDidMount: function(info) {
+		 var tooltip = new Tooltip(info.el, {
+		     title: info.event.extendedProps.description,
+		     placement: 'top',
+		     trigger: 'hover',
+		     container: 'body',
+		 });
+             },
+         });
+	 calendar.render();
+     });
+    </script>
+    <div id='calendar'></div>
+{% endblock %}

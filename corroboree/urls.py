@@ -27,6 +27,7 @@ urlpatterns = [
     path('account/reset/done/', auth_views.PasswordResetCompleteView.as_view(), name='password_reset_complete'),
     path('api/create-order/<int:booking_id>/', booking_views.create_booking_order, name='create-order'),
     path('api/capture-order/', booking_views.capture_booking_order, name='capture-order'),
+    path('api/get-room-availability/', booking_views.get_room_availability, name='get_room_availability'),
 ]
 
 

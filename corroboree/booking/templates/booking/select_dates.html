@@ -5,22 +5,133 @@
 {% block content %}
     {{ page.intro | richtext }}
 
-    <form action="." method="POST">
-	{% csrf_token %}
+    <div class='container'>
+	<div class='form-container'>
+	    <form action="." method="GET">
+		{{ date_form }}
+		<input type="submit" value="{% if room_form %}Search again{% else %}Search dates{% endif %}">
+	    </form>
+	    
+	    {% if room_form %}
+		<form action="." method="POST">
+		    {% csrf_token %}
+		    {{ room_form }}
+		    <input type="submit" name="room_form" value="Proceed to Booking">
+		</form>
+	    {% endif %}
+	</div>
+	<div class='calendar-container'>
+	    <div id='calendar'></div>
+	</div>
+    </div>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
+    <script src='https://code.jquery.com/jquery-3.6.0.min.js'></script>
+    <script>
+     document.addEventListener('DOMContentLoaded', function() {
+         var calendarEl = document.getElementById('calendar');
+	 
+	 function getQueryParam(param) {
+             var urlParams = new URLSearchParams(window.location.search);
+             return urlParams.get(param);
+	 }
+	 
+	 var start = getQueryParam('start_date');
+         var end = getQueryParam('end_date');
 
-	{{ date_form }}
-
-	<input type="submit" value="{% if room_form %}Search again{% else %}Search dates{% endif %}">
-    </form>
-    
-    {% if room_form %}
-	<form action="." method="POST">
-	    {% csrf_token %}
-
-	    {{ room_form }}
-
-	    <input type="submit" name="room_form" value="Proceed to Booking">
-	</form>
-    {% endif %}
+	 if (!start || !end) {
+             var today = new Date();
+             var currentDay = today.getDay();
+	     // Calculate the start date as next Saturday
+             var startOffset = (currentDay === 7) ? 0 : (7 - currentDay);
+             var startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + startOffset);
+             
+             // Calculate the end date as the following Saturday
+             var endOffset = startOffset + 6; 
+             var endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + endOffset);
+	     
+             start = startDate.toISOString().split('T')[0];
+             end = endDate.toISOString().split('T')[0];
+	 }
+	 
+	 function fetchRoomAvailability(start, end) {
+             $.ajax({
+		 url: '/api/get-room-availability/',
+		 data: {
+                     start: start,
+                     end: end
+		 },
+		 success: function(data) {
+                     var events = [];
+                     var eventMapping = {};
+		     
+                     for (var date in data) {
+			 var freeRooms = data[date];
+			 
+			 freeRooms.forEach(function(room) {
+                             if (!eventMapping[room]) {
+				 eventMapping[room] = [];
+                             }
+                             eventMapping[room].push(date);
+			 });
+                     }
+		     
+                     for (var room in eventMapping) {
+			 var roomDates = eventMapping[room];
+			 roomDates.sort();
+			 
+			 var startDate = roomDates[0];
+			 var endDate = roomDates[0];
+			 
+			 for (var i = 1; i < roomDates.length; i++) {
+                             if (new Date(roomDates[i]) - new Date(endDate) === 86400000) {  // Check if the dates are consecutive
+				 endDate = roomDates[i];
+                             } else {
+				 events.push({
+                                     title: `Room ${room} free`,
+                                     start: startDate,
+                                     end: new Date(new Date(endDate).getTime() + 86400000).toISOString().split('T')[0],
+                                     description: `Room ${room} is free`,
+                                     color: 'green',
+                                     textColor: 'black'
+				 });
+				 startDate = roomDates[i];
+				 endDate = roomDates[i];
+                             }
+			 }
+			 
+			 events.push({
+                             title: `Room ${room} free`,
+                             start: startDate,
+                             end: new Date(new Date(endDate).getTime() + 86400000).toISOString().split('T')[0],
+                             description: `Room ${room} is free`,
+                             color: 'green',
+                             textColor: 'black'
+			 });
+                     }
+		     calendar.removeAllEvents();
+                     calendar.addEventSource(events);
+		 }
+             });
+	 }
+	 
+	 var calendar = new FullCalendar.Calendar(calendarEl, {
+             height: 'auto',
+	     initialView: 'dayGridSomeLength',
+	     initialDate: start,
+	     locale: 'en-AU',
+	     views: {
+		 dayGridSomeLength: {
+		     type: 'dayGrid',
+		     duration: { days: (new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24) + 1 } // date maths is fun
+		 }
+	     },
+	     datesSet: function(info) {
+		 fetchRoomAvailability(info.startStr, info.endStr);
+             },
+         });
+         
+         calendar.render();
+     });
+    </script>
     
 {% endblock %}
