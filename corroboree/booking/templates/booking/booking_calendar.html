@@ -22,12 +22,15 @@
 		     var events = [];
 		     for (var date in data) {
 			 var freeRooms = data[date];
-			 var color = 'green';
-			 if (freeRooms.length == 0) {
-			     color = 'red';
-			 } else if (freeRooms.length < 9) {
-			     color = 'yellow';
-			 }
+			 var colours = [
+			     '#e51f1f',
+			     '#f2a134',
+			     '#f7e379',
+			     '#bbdb44',
+			     '#44ce1b',
+			 ]
+			 var index = Math.ceil(freeRooms.length / 2)
+			 var color = colours[index]
 			 events.push({
 			     title: freeRooms.length + ' room' + (freeRooms.length === 1 ? '' : 's') + ' free',
 			     start: date,
