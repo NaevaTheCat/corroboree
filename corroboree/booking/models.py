@@ -522,7 +522,7 @@ def get_booking_types(conf: config.Config, start_date: date, end_date: date):
     """Returns a dictionary of date-keyed booking type querysets with dates matching either a week start or a 'spare' day
 
     Assumes that a week has a weekly booking type. Will not return daily bookings for week-equivalent dates"""
-    leading_days, weeks, trailing_days = dates_to_weeks(start_date, end_date)
+    leading_days, weeks, trailing_days = dates_to_weeks(start_date, end_date, week_start_day=conf.week_start_day)
     seasons = list(conf.seasons_in_date_range(start_date, end_date))
     leading_dates = [start_date + timedelta(days=x) for x in range(leading_days)]
     week_dates = [start_date + timedelta(days=leading_days + x * 7) for x in range(weeks)]
@@ -555,9 +555,13 @@ def seasons_to_season_on_day(seasons: [config.Season], day: date) -> config.Seas
 
 
 def check_season_rules(member: config.Member, start_date: datetime.date, end_date: datetime.date, rooms: [config.Room]):
+    """ Given a member, a range of dates, and the rooms they would like to book for those dates. Validates the season rules which apply"""
     conf = config.Config.objects.get()  # only valid for single config
     if member.share_number == 0:
         # Maintenance booking, allow anything
+        return
+    elif end_date <= date.today() + timedelta(weeks=conf.last_minute_booking_weeks):
+        # Assuming the end date is already otherwise valid you can book anything 2 weeks out
         return
     for start, end in date_range_to_month_ranges(start_date, end_date):
         overlapping_bookings = bookings_for_member_in_range(member, start, end)

@@ -19,18 +19,32 @@ def validate_only_one_instance(obj):
 
 
 class Config(ClusterableModel):
+    class Weekday(models.IntegerChoices):
+        Monday = 0
+        Tuesday = 1
+        Wednesday = 2
+        Thursday = 3
+        Friday = 4
+        Saturday = 5
+        Sunday = 6
     max_weeks_till_booking = models.IntegerField(default=26)
     time_of_day_rollover = models.TimeField(
         help_text="What time of day to open bookings for the day max_weeks_till_booking from now")
     number_of_rooms = models.IntegerField(default=9)
+    week_start_day = models.IntegerField(choices=Weekday,
+                                         help_text="The day used to determine when a week starts")
+    last_minute_booking_weeks = models.IntegerField(default=2,
+                                                    help_text="Number of weeks for last minute booking rules to apply")
     maximum_family_members = models.IntegerField(
         default=10,
         help_text="maximum authorised family members including primary shareholder"
     )
 
     panels = [
+        FieldPanel("week_start_day"),
         FieldRowPanel([
             FieldPanel("max_weeks_till_booking"),
+            FieldPanel("last_minute_booking_weeks"),
             FieldPanel("time_of_day_rollover"),
         ]),
         FieldPanel("maximum_family_members"),
