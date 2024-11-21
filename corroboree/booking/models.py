@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError, PermissionDenied
 from django.core.mail import send_mail
 from django.contrib import messages
 from django.db import models
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.forms import formset_factory, CheckboxSelectMultiple
 from django.shortcuts import render, redirect
 from django.template.loader import render_to_string
@@ -21,6 +21,28 @@ from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet
 
 from corroboree.config import models as config
+
+
+class LiveBookingRecordManager(models.Manager):
+    """Filters out records which are not live from querysets.
+
+    Live means that they have not been cancelled, expired, or taken place in the past"""
+    def get_queryset(self):
+        status = BookingRecord.BookingRecordStatus
+        now = timezone.now()
+        # TODO: settings?
+        in_progress_limit = now - timedelta(minutes=30)
+        submitted_limit = now - timedelta(hours=24)
+        queryset = super().get_queryset().exclude(status=status.CANCELLED)
+        queryset = queryset.exclude(
+            Q(status=status.IN_PROGRESS) &
+            Q(last_updated__lt=in_progress_limit)
+        )
+        queryset = queryset.exclude(
+            Q(status=status.SUBMITTED) &
+            Q(last_updated__lt=submitted_limit)
+        )
+        return queryset
 
 
 class BookingRecord(models.Model):
@@ -50,6 +72,9 @@ class BookingRecord(models.Model):
                                       default=BookingRecordPaymentStatus.NOT_ISSUED)
     paypal_transaction_id = models.CharField(max_length=20, blank=True)
     status = models.CharField(max_length=2, choices=BookingRecordStatus)
+
+    objects = models.Manager()
+    live_objects = LiveBookingRecordManager()
 
     def __str__(self):
         return '[{id}] {start} - {end}: {member}'.format(
