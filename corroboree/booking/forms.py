@@ -96,10 +96,10 @@ class BookingRoomChoosingForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.member = member
         if start_date is not None and end_date is not None:
-            current_booking_records = BookingRecord.objects.filter(
+            current_booking_records = BookingRecord.live_objects.filter(
                 end_date__gt=datetime.date.today(),
                 start_date__lt=end_date,
-            ).exclude(status__exact=BookingRecord.BookingRecordStatus.CANCELLED)
+            )
             overlapping_bookings = current_booking_records.exclude(
                 start_date__gte=end_date).exclude(
                 end_date__lte=start_date,

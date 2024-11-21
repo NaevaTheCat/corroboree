@@ -1,6 +1,6 @@
 <h1> Booking Confirmation </h1>
 
-<p> Here is a summary of your upcoming booking:
+<p> {{ email_text }}
     Start date: {{ booking.start_date }}
     End date: {{ booking.end_date }}
     Rooms: {% for room in booking.rooms.all %}

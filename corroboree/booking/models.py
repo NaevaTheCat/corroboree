@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError, PermissionDenied
 from django.core.mail import send_mail
 from django.contrib import messages
 from django.db import models
-from django.db.models import Sum
+from django.db.models import Sum, Q
 from django.forms import formset_factory, CheckboxSelectMultiple
 from django.shortcuts import render, redirect
 from django.template.loader import render_to_string
@@ -21,6 +21,28 @@ from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet
 
 from corroboree.config import models as config
+
+
+class LiveBookingRecordManager(models.Manager):
+    """Filters out records which are not live from querysets.
+
+    Live means that they have not been cancelled, expired, or taken place in the past"""
+    def get_queryset(self):
+        status = BookingRecord.BookingRecordStatus
+        now = timezone.now()
+        # TODO: settings?
+        in_progress_limit = now - timedelta(minutes=30)
+        submitted_limit = now - timedelta(hours=24)
+        queryset = super().get_queryset().exclude(status=status.CANCELLED)
+        queryset = queryset.exclude(
+            Q(status=status.IN_PROGRESS) &
+            Q(last_updated__lt=in_progress_limit)
+        )
+        queryset = queryset.exclude(
+            Q(status=status.SUBMITTED) &
+            Q(last_updated__lt=submitted_limit)
+        )
+        return queryset
 
 
 class BookingRecord(models.Model):
@@ -50,6 +72,10 @@ class BookingRecord(models.Model):
                                       default=BookingRecordPaymentStatus.NOT_ISSUED)
     paypal_transaction_id = models.CharField(max_length=20, blank=True)
     status = models.CharField(max_length=2, choices=BookingRecordStatus)
+    reminder_sent = models.BooleanField(default=False)
+
+    objects = models.Manager()
+    live_objects = LiveBookingRecordManager()
 
     def __str__(self):
         return '[{id}] {start} - {end}: {member}'.format(
@@ -91,14 +117,9 @@ class BookingRecord(models.Model):
         self.status = status
         self.save()
 
-    def send_confirmation_email(self, subject=None):  # TODO: do less in the template, more here in the context
+    def send_related_email(self, subject, email_text):  # TODO: do less in the template, more here in the context
         """Format and send an email using a django template"""
-        if subject is None:
-            subject = 'Neige Booking Confirmation: {start} - {end}'.format(
-                start=self.start_date,
-                end=self.end_date,
-            )
-        from_email = 'Neige <neige.email@example.com>'
+        from_email = 'Neige <neige.email@example.com>'  # TODO: Email config should be defined in settings
         recipients = [self.member.contact_email]
         if self.member_in_attendance.contact_email != self.member.contact_email:
             recipients.append(self.member_in_attendance.contact_email)
@@ -107,7 +128,7 @@ class BookingRecord(models.Model):
                      x['first_name'] != '' and x['last_name'] != '' and x['email'] != '']
         html_message = render_to_string(
             'email/confirmation_mail_template.html',
-            {'booking': self, 'attendees': attendees}
+            {'booking': self, 'email_text': email_text, 'attendees': attendees}
         )
         plain_message = strip_tags(html_message)
         send_mail(
@@ -292,7 +313,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 return response
             member = request.user.member
             today = date.today()
-            bookings = BookingRecord.objects.filter(member__exact=member)
+            bookings = BookingRecord.live_objects.filter(member__exact=member)
             upcoming_bookings = bookings.filter(
                 end_date__gt=today,
                 status__exact=BookingRecord.BookingRecordStatus.FINALISED
@@ -319,17 +340,12 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 return response
             member = request.user.member
             if booking_id is None:
-                booking_id = BookingRecord.objects.filter(member=member).order_by('last_updated').first()
+                booking_id = BookingRecord.live_objects.filter(member=member).order_by('last_updated').first()
             # Try find the booking, but make sure it's ours and editable!
             try:
-                booking = BookingRecord.objects.get(
+                booking = BookingRecord.live_objects.get(
                     pk=booking_id,
                     member=member,
-                    status__in=[
-                        BookingRecord.BookingRecordStatus.IN_PROGRESS,
-                        BookingRecord.BookingRecordStatus.SUBMITTED,
-                        BookingRecord.BookingRecordStatus.FINALISED,
-                    ]
                 )
             except BookingRecord.DoesNotExist:  # Due to using PK no need to catch multiple objects
                 booking = None
@@ -365,10 +381,13 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                         booking.status = booking.update_status(BookingRecord.BookingRecordStatus.SUBMITTED)
                         return redirect(self.url + 'pay/%s' % booking_id)
                     else:  # Booking is already submitted or finalised
-                        booking.send_confirmation_email(subject='Neige Booking Updated: {start} - {end}'.format(
-                            start=booking.start_date,
-                            end=booking.end_date
-                        ))
+                        booking.send_related_email(
+                            subject='Neige Booking Updated: {start} - {end}'.format(
+                                start=booking.start_date,
+                                end=booking.end_date
+                            ),
+                            email_text='The guest list has been updated:'
+                        )
                         return redirect(self.url)
             else:
                 attendees = list(booking.other_attendees.values())
@@ -391,9 +410,9 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 return response
             member = request.user.member
             if booking_id is None:
-                booking_id = BookingRecord.objects.filter(member=member).order_by('last_updated').first()
+                booking_id = BookingRecord.live_objects.filter(member=member).order_by('last_updated').first()
             try:
-                booking = BookingRecord.objects.get(
+                booking = BookingRecord.live_objects.get(
                     pk=booking_id,
                     member=member,
                     status=BookingRecord.BookingRecordStatus.SUBMITTED,
@@ -420,7 +439,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
             if not booking_id:
                 raise Http404("Booking ID not provided")
             try:
-                booking = BookingRecord.objects.get(
+                booking = BookingRecord.live_objects.get(
                     pk=booking_id,
                     member=member,
                 )
@@ -447,10 +466,10 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 return response
             member = request.user.member
             if booking_id is None:
-                booking_id = BookingRecord.objects.filter(member=member).order_by('last_updated').first()
+                booking_id = BookingRecord.live_objects.filter(member=member).order_by('last_updated').first()
             # Try find the booking, but make sure it's ours and editable!
             try:
-                booking = BookingRecord.objects.get(
+                booking = BookingRecord.live_objects.get(
                     pk=booking_id,
                     member=member,
                     status__in=[
@@ -495,7 +514,7 @@ def refresh_stale_login(request, td=timedelta(days=1)):
 
 def bookings_for_member_in_range(member: config.Member, start_date: date, end_date: date):
     """Given a member and a date range returns bookings for that member within that date range (including partially)"""
-    bookings = member.bookings.exclude(end_date__lte=start_date).exclude(start_date__gte=end_date)
+    bookings = member.bookings(manager='live_objects').exclude(end_date__lte=start_date).exclude(start_date__gte=end_date)
     return bookings
 
 
