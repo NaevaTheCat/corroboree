@@ -154,7 +154,13 @@ def capture_booking_order(request):
         booking = BookingRecord.objects.get(id=booking_id)
         booking.update_payment_status(BookingRecord.BookingRecordPaymentStatus.PAID, transaction_id=transaction_id)
         booking.update_status(BookingRecord.BookingRecordStatus.FINALISED)
-        booking.send_confirmation_email()
+        booking.send_related_email(
+            subject='Neige Booking Confirmation: {start} - {end}'.format(
+                start=booking.start_date,
+                end=booking.end_date,
+            ),
+            email_text='The following booking has been confirmed and paid for:'
+        )  # TODO: this text etc should probably be in the configuration
         return JsonResponse(response_data)
     except ErrorException as e:
         return JsonResponse({'error': e.message}, status=e.response_code)

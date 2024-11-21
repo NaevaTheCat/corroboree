@@ -72,6 +72,7 @@ class BookingRecord(models.Model):
                                       default=BookingRecordPaymentStatus.NOT_ISSUED)
     paypal_transaction_id = models.CharField(max_length=20, blank=True)
     status = models.CharField(max_length=2, choices=BookingRecordStatus)
+    reminder_sent = models.BooleanField(default=False)
 
     objects = models.Manager()
     live_objects = LiveBookingRecordManager()
@@ -116,14 +117,9 @@ class BookingRecord(models.Model):
         self.status = status
         self.save()
 
-    def send_confirmation_email(self, subject=None):  # TODO: do less in the template, more here in the context
+    def send_related_email(self, subject, email_text):  # TODO: do less in the template, more here in the context
         """Format and send an email using a django template"""
-        if subject is None:
-            subject = 'Neige Booking Confirmation: {start} - {end}'.format(
-                start=self.start_date,
-                end=self.end_date,
-            )
-        from_email = 'Neige <neige.email@example.com>'
+        from_email = 'Neige <neige.email@example.com>'  # TODO: Email config should be defined in settings
         recipients = [self.member.contact_email]
         if self.member_in_attendance.contact_email != self.member.contact_email:
             recipients.append(self.member_in_attendance.contact_email)
@@ -132,7 +128,7 @@ class BookingRecord(models.Model):
                      x['first_name'] != '' and x['last_name'] != '' and x['email'] != '']
         html_message = render_to_string(
             'email/confirmation_mail_template.html',
-            {'booking': self, 'attendees': attendees}
+            {'booking': self, 'email_text': email_text, 'attendees': attendees}
         )
         plain_message = strip_tags(html_message)
         send_mail(
@@ -385,10 +381,13 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                         booking.status = booking.update_status(BookingRecord.BookingRecordStatus.SUBMITTED)
                         return redirect(self.url + 'pay/%s' % booking_id)
                     else:  # Booking is already submitted or finalised
-                        booking.send_confirmation_email(subject='Neige Booking Updated: {start} - {end}'.format(
-                            start=booking.start_date,
-                            end=booking.end_date
-                        ))
+                        booking.send_related_email(
+                            subject='Neige Booking Updated: {start} - {end}'.format(
+                                start=booking.start_date,
+                                end=booking.end_date
+                            ),
+                            email_text='The guest list has been updated:'
+                        )
                         return redirect(self.url)
             else:
                 attendees = list(booking.other_attendees.values())
