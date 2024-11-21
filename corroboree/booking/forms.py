@@ -36,14 +36,15 @@ class BookingDateRangeForm(forms.Form):
     # TODO release weeks 1 chunk at a time. Rounding needed
     def clean(self):
         cleaned_data = super().clean()
+        conf = config.Config.objects.get()
         start_date = cleaned_data.get("start_date")
         end_date = cleaned_data.get("end_date")
         # Time of day rollover checking
         tod_rollover = config.Config.objects.get().time_of_day_rollover
         aest_now = datetime.datetime.now(pytz.timezone('Australia/Sydney'))
         compare_date = aest_now.date() if aest_now.time() >= tod_rollover else aest_now.date() - datetime.timedelta(days=1)
-        last_sunday = last_weekday_date(compare_date, 6)
-        max_weeks_till_booking = config.Config.objects.get().max_weeks_till_booking
+        last_sunday = last_weekday_date(compare_date, conf.week_start_day)
+        max_weeks_till_booking = conf.max_weeks_till_booking
         max_weeks_ahead_start = datetime.timedelta(
             weeks=max_weeks_till_booking
         )
@@ -163,7 +164,7 @@ class GuestForm(forms.Form):
     email = forms.EmailField(label='Contact Email', required=False)
 
 
-def last_weekday_date(date: datetime.date, weekday=6):
+def last_weekday_date(date: datetime.date, weekday=5):
     """Given a date and weekday, return the date of the last weekday (datetime ints [0-6])"""
     date_day = date.weekday()
     delta = datetime.timedelta((7 - (weekday - date_day)) % 7)
