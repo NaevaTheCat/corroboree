@@ -317,7 +317,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 return response
             member = request.user.member
             today = date.today()
-            bookings = BookingRecord.objects.filter(member__exact=member)
+            bookings = BookingRecord.live_objects.filter(member__exact=member)
             upcoming_bookings = bookings.filter(
                 end_date__gt=today,
                 status__exact=BookingRecord.BookingRecordStatus.FINALISED
@@ -344,17 +344,12 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 return response
             member = request.user.member
             if booking_id is None:
-                booking_id = BookingRecord.objects.filter(member=member).order_by('last_updated').first()
+                booking_id = BookingRecord.live_objects.filter(member=member).order_by('last_updated').first()
             # Try find the booking, but make sure it's ours and editable!
             try:
-                booking = BookingRecord.objects.get(
+                booking = BookingRecord.live_objects.get(
                     pk=booking_id,
                     member=member,
-                    status__in=[
-                        BookingRecord.BookingRecordStatus.IN_PROGRESS,
-                        BookingRecord.BookingRecordStatus.SUBMITTED,
-                        BookingRecord.BookingRecordStatus.FINALISED,
-                    ]
                 )
             except BookingRecord.DoesNotExist:  # Due to using PK no need to catch multiple objects
                 booking = None
@@ -416,9 +411,9 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 return response
             member = request.user.member
             if booking_id is None:
-                booking_id = BookingRecord.objects.filter(member=member).order_by('last_updated').first()
+                booking_id = BookingRecord.live_objects.filter(member=member).order_by('last_updated').first()
             try:
-                booking = BookingRecord.objects.get(
+                booking = BookingRecord.live_objects.get(
                     pk=booking_id,
                     member=member,
                     status=BookingRecord.BookingRecordStatus.SUBMITTED,
@@ -445,7 +440,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
             if not booking_id:
                 raise Http404("Booking ID not provided")
             try:
-                booking = BookingRecord.objects.get(
+                booking = BookingRecord.live_objects.get(
                     pk=booking_id,
                     member=member,
                 )
@@ -472,10 +467,10 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 return response
             member = request.user.member
             if booking_id is None:
-                booking_id = BookingRecord.objects.filter(member=member).order_by('last_updated').first()
+                booking_id = BookingRecord.live_objects.filter(member=member).order_by('last_updated').first()
             # Try find the booking, but make sure it's ours and editable!
             try:
-                booking = BookingRecord.objects.get(
+                booking = BookingRecord.live_objects.get(
                     pk=booking_id,
                     member=member,
                     status__in=[
@@ -520,7 +515,7 @@ def refresh_stale_login(request, td=timedelta(days=1)):
 
 def bookings_for_member_in_range(member: config.Member, start_date: date, end_date: date):
     """Given a member and a date range returns bookings for that member within that date range (including partially)"""
-    bookings = member.bookings.exclude(end_date__lte=start_date).exclude(start_date__gte=end_date)
+    bookings = member.bookings(manager='live_objects').exclude(end_date__lte=start_date).exclude(start_date__gte=end_date)
     return bookings
 
 

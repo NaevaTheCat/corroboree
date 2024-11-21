@@ -30,10 +30,10 @@ from paypalserversdk.exceptions.api_exception import APIException
 def get_room_availability(request):
     first_day = datetime.datetime.fromisoformat(request.GET.get('start')).date()
     last_day = datetime.datetime.fromisoformat(request.GET.get('end')).date()
-    current_bookings = BookingRecord.objects.filter(
+    current_bookings = BookingRecord.live_objects.filter(
         end_date__gt=first_day,
         start_date__lte=last_day
-    ).exclude(status=BookingRecord.BookingRecordStatus.CANCELLED)
+    )
     free_rooms = [Config.objects.get().rooms.all()] * (last_day - first_day).days
     for this_booking in current_bookings:
         this_rooms = this_booking.rooms.all()
