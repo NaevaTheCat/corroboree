@@ -5,7 +5,26 @@ Member 0 is dummy member for maintenance bookings
 
 # Site layout and formatting
 Menu order is adjusted by adjusting 'sort menu order' in the edit menu
-of the homepage. 
+of the homepage.
+
+# Administration Commands
+
+## Session clearing
+A cron job setup to run the clearsessions command daily or so must be
+configured to clear stale DB sessions
+
+## Expired booking clearing
+Bookings which are not finalised are expired via the expire-bookings
+management command. A custom Manager is used to exclude these from
+querysets so it is not critical that this is run frequently but in
+order to maintain a clean administration UI it is recommended to run
+this task at least once an hour via the crontab
+
+## Sending reminder emails
+A BookingRecord has a field `reminder_sent` this is used to mark
+whether or not a reminder email has been sent. Emails reminding users
+to fill out the guest list are sent 1 week out from the start date, or
+at the earliest opportunity. Recommended to run daily.
 
 # User system
 
