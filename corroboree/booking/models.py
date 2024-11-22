@@ -654,3 +654,17 @@ def room_occupancy_array(start_date: datetime.date, end_date: datetime.date, roo
         end_delta = max(0, (end_date - this_booking.end_date).days)
         array.append([0] * start_delta + [num_rooms] * (length - (start_delta + end_delta)) + [0] * end_delta)
     return array
+
+
+def booked_rooms(start_date, end_date) -> [int]:
+    """Returns a flat list of room numbers currently booked between dates"""
+    current_booking_records = BookingRecord.live_objects.filter(
+        end_date__gt=date.today(),
+        start_date__lt=end_date,
+    )
+    overlapping_bookings = current_booking_records.exclude(
+        start_date__gte=end_date).exclude(
+        end_date__lte=start_date,
+    )
+    booked_room_ids = overlapping_bookings.values_list('rooms__room_number', flat=True)
+    return booked_room_ids
