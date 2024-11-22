@@ -19,7 +19,7 @@
 			<td>{{ contact.member.first_name }} {{ contact.member.last_name }}</td>
 			<td>{{ contact.position }}</td>
 			<td><a href='mailto: {{ contact.member.contact_email }}'>{{ contact.member.contact_email }}</a></td>
-			<td>{{ contact.contact_phone }}</td>
+			<td>{{ contact.member.contact_phone }}</td>
 		    </tr>
 		{% endfor %}
 	    </table>
@@ -30,7 +30,7 @@
 		    <tr>
 			<td>{{ responsibility.member.first_name }} {{ responsibility.member.last_name }}</td>
 			<td><a href='mailto: {{ responsibility.member.contact_email }}'>{{ responsibility.member.contact_email }}</a></td>
-			<td>{{ responsibility.contact_phone }}</td>
+			<td>{{ responsibility.member.contact_phone }}</td>
 		    </tr>
 		</table>
 	    {% endwith %}

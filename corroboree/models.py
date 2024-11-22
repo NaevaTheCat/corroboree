@@ -10,13 +10,11 @@ from corroboree.config.models import Member
 class BoardContactBlock(blocks.StructBlock):
     member = SnippetChooserBlock(Member)
     position = blocks.CharBlock(max_length=128, help_text='Position on board')
-    contact_phone = blocks.CharBlock(max_length=14, help_text='Phone number as a string')
 
 
 class ResponsibilityBlock(blocks.StructBlock):
     title = blocks.CharBlock(max_length=128, help_text='Title of Responsibility')
     member = SnippetChooserBlock(Member)
-    contact_phone = blocks.CharBlock(max_length=14, help_text='Phone number as a string')
 
 
 class ContactPage(Page):
