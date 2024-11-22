@@ -143,7 +143,7 @@ class BookingRoomChoosingForm(forms.Form):
 # Custom field for member_in_attendance names
 class MiAModelChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
-        return obj.first_name + ' ' + obj.last_name
+        return obj.full_name()
 
 
 class BookingRecordMemberInAttendanceForm(forms.Form):
