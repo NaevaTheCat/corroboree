@@ -137,7 +137,7 @@ class Member(PersonBase, ClusterableModel):
         return share_prefix + self.full_name()
 
 
-class FamilyMember(PersonBase, ClusterableModel):
+class FamilyMember(PersonBase, models.Model):
     primary_shareholder = ParentalKey(Member, on_delete=models.CASCADE, related_name="family")
 
     panels = [
@@ -190,7 +190,7 @@ class RoomType(ClusterableModel):
         return double_text + join_text + bunk_text
 
 
-class Room(ClusterableModel):
+class Room(models.Model):
     # TODO validators to settings
     config = ParentalKey(Config, on_delete=models.PROTECT, related_name="rooms")
     room_number = models.IntegerField(primary_key=True, validators=[
@@ -203,7 +203,7 @@ class Room(ClusterableModel):
         return str(self.room_number) + ': ' + str(self.room_type)
 
 
-class Season(ClusterableModel):
+class Season(models.Model):
     config = ParentalKey(Config, on_delete=models.PROTECT, related_name="seasons")
 
     class Months(models.IntegerChoices):
@@ -284,7 +284,7 @@ class Season(ClusterableModel):
                     raise ValidationError("This season shares months with %s" % s)
 
 
-class BookingType(ClusterableModel):
+class BookingType(models.Model):
     config = ParentalKey(Config, on_delete=models.PROTECT, related_name="booking_types")
     booking_type_name = models.CharField(max_length=128)
     rate = models.DecimalField(max_digits=8, decimal_places=2)
@@ -293,7 +293,7 @@ class BookingType(ClusterableModel):
         default=False,
         help_text='If set, the fee for this booking is not multiplied by the number of rooms booked')
     banned_rooms = ParentalManyToManyField(Room, blank=True)
-    season_active = ParentalKey(Season, on_delete=models.CASCADE, related_name="booking_types")
+    season_active = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="booking_types")
     minimum_rooms = models.IntegerField("Minimum number of booked rooms", default=0)
 
     class Priorities(models.IntegerChoices):
