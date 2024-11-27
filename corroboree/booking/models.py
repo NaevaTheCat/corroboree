@@ -6,6 +6,7 @@ from django.core.mail import send_mail
 from django.contrib import messages
 from django.db import models
 from django.db.models import Sum, Q
+from django_filters import FilterSet, ModelMultipleChoiceFilter
 from django.forms import formset_factory, CheckboxSelectMultiple
 from django.shortcuts import render, redirect
 from django.template.loader import render_to_string
@@ -140,6 +141,35 @@ class BookingRecord(models.Model):
         )
 
 
+class BookingRecordFilter(FilterSet):
+    rooms = ModelMultipleChoiceFilter(
+        queryset=config.Room.objects.all(),
+        widget=CheckboxSelectMultiple,
+        label="Rooms",
+        method='filter_rooms',
+    )
+
+    class Meta:
+        model = BookingRecord
+        fields = {
+            'member__last_name': ['iexact'],
+            'member__first_name': ['iexact'],
+            'member_in_attendance__last_name': ['iexact'],
+            'member_in_attendance__first_name': ['iexact'],
+            'start_date': ['lt', 'gt'],
+            'end_date': ['lt', 'gt'],
+            'status': ['exact'],
+            'payment_status': ['iexact'],
+            'paypal_transaction_id': ['exact'],
+            'cost': ['lt', 'gt'],
+        }
+
+    def filter_rooms(self, queryset, name, value):
+        for room in value:
+            queryset = queryset.filter(rooms=room)
+        return queryset
+
+
 class BookingRecordViewSet(SnippetViewSet):
     model = BookingRecord
     icon = 'form'
@@ -154,6 +184,21 @@ class BookingRecordViewSet(SnippetViewSet):
         'member_in_attendance',
         'status',
         'payment_status',
+        'cost',
+        'paypal_transaction_id',
+        'rooms_list',
+    ]
+    list_export = [
+        'member',
+        'last_updated',
+        'start_date',
+        'end_date',
+        'member_in_attendance',
+        'other_attendees',
+        'status',
+        'payment_status',
+        'cost',
+        'paypal_transaction_id',
         'rooms_list',
     ]
     list_per_page = 50
@@ -161,13 +206,7 @@ class BookingRecordViewSet(SnippetViewSet):
     inspect_view_enabled = True
     admin_url_namespace = 'bookings_view'
     base_url_path = 'internal/bookings'
-    list_filter = {
-        'member__last_name': ['exact', 'icontains'],
-        'start_date': ['lt', 'gt'],
-        'end_date': ['lt', 'gt'],
-        'status': ['exact'],
-        'payment_status': ['exact'],
-    }
+    filterset_class = BookingRecordFilter
 
     panels = [
         FieldPanel('member'),
@@ -182,6 +221,7 @@ class BookingRecordViewSet(SnippetViewSet):
         FieldRowPanel([
             FieldPanel('status'),
             FieldPanel('payment_status'),
+            FieldPanel('paypal_transaction_id'),
         ]),
     ]
 
