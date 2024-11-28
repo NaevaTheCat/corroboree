@@ -29,16 +29,45 @@ header {
   border-collapse: collapse;
 }
 
+.contacts-table table,
+.rates-table table {
+  table-layout: fixed;
+  width: 80%;
+  border-collapse: collapse;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.form-table table {
+  table-layout: fixed;
+  width: 80%;
+  border-collapse: collapse;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.rates-table th,
+.rates-table td,
+.contacts-table th,
+.contacts-table td,
+.form-table th,
+.form-table td,
 .booking-summary-table th,
 .booking-summary-table td {
   padding: 10px;
   text-align: center;
 }
 
+.rates-table tr:nth-child(odd),
+.contacts-table tr:nth-child(odd),
+.form-table tbody tr:nth-child(odd),
 .booking-summary-table tbody tr:nth-child(odd) {
   background-color: #6ec7c7;
 }
 
+.rates-table tr:nth-child(even),
+.contacts-table tr:nth-child(even),
+.form-table tbody tr:nth-child(even),
 .booking-summary-table tbody tr:nth-child(even) {
   background-color: transparent;
 }

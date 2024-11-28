@@ -7,6 +7,7 @@
 	{% if block.block_type == 'heading' %}
 	    <div class='subheading'><h3>{{ block.value }}</h3></div>
 	{% elif block.block_type == 'board_contacts' %}
+	    <div class='contacts-table'>
 	    <table class='contacts-table'>
 		<tr hidden>
 		    <th>Name</th>
@@ -23,16 +24,19 @@
 		    </tr>
 		{% endfor %}
 	    </table>
+	    </div>
 	{% elif block.block_type == 'responsibility' %}
 	    {% with responsibility=block.value %}
 		<div class='subsubheading'><h4>{{ responsibility.title }}</h4></div>
-		<table class='contact-table'>
+		<div class='contacts-table'>
+		<table class='contacts-table'>
 		    <tr>
 			<td>{{ responsibility.member.first_name }} {{ responsibility.member.last_name }}</td>
 			<td><a href='mailto: {{ responsibility.member.contact_email }}'>{{ responsibility.member.contact_email }}</a></td>
 			<td>{{ responsibility.member.contact_phone }}</td>
 		    </tr>
 		</table>
+		</div>
 	    {% endwith %}
 	{% endif %}
     {% endfor %}
