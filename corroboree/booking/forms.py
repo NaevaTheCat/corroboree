@@ -33,7 +33,6 @@ class BookingDateRangeForm(forms.Form):
         ),
     )
 
-    # TODO release weeks 1 chunk at a time. Rounding needed
     def clean(self):
         cleaned_data = super().clean()
         conf = config.Config.objects.get()
@@ -43,7 +42,7 @@ class BookingDateRangeForm(forms.Form):
         tod_rollover = config.Config.objects.get().time_of_day_rollover
         aest_now = datetime.datetime.now(pytz.timezone('Australia/Sydney'))
         compare_date = aest_now.date() if aest_now.time() >= tod_rollover else aest_now.date() - datetime.timedelta(days=1)
-        last_sunday = last_weekday_date(compare_date, conf.week_start_day)
+        last_week_start = last_weekday_date(compare_date, conf.week_start_day)
         max_weeks_till_booking = conf.max_weeks_till_booking
         max_weeks_ahead_start = datetime.timedelta(
             weeks=max_weeks_till_booking
@@ -52,7 +51,7 @@ class BookingDateRangeForm(forms.Form):
             weeks=(1 + max_weeks_till_booking)
         )
         if start_date and end_date:
-            if start_date > last_sunday + max_weeks_ahead_start:
+            if start_date > last_week_start + max_weeks_ahead_start:
                 raise forms.ValidationError(
                     "Start date is more than %s weeks ahead" % max_weeks_till_booking
                 )
@@ -60,7 +59,7 @@ class BookingDateRangeForm(forms.Form):
                 raise forms.ValidationError(
                     "End date must be after start date"
                 )
-            if end_date > last_sunday + max_weeks_ahead_end:
+            if end_date > last_week_start + max_weeks_ahead_end:
                 raise forms.ValidationError(
                     "End date is more than %s weeks ahead" % (max_weeks_till_booking + 1)
                 )
