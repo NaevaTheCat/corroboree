@@ -7,7 +7,7 @@ from corroboree.config.models import Config, Member, RoomType, Room, Season, Boo
 class FamilyMemberViewSet(SnippetViewSet):
     model = FamilyMember
     icon = 'user'
-    list_display = ['name', 'contact_email', 'primary_shareholder']
+    list_display = ['full_name', 'contact_email', 'primary_shareholder']
     copy_view_enabled = False
     list_filter = {
         'primary_shareholder__last_name': ['icontains'],

@@ -2,7 +2,7 @@ import datetime
 
 from django import forms
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator, MinLengthValidator, MaxLengthValidator
 from django.db import models
 from django.db.models import F, Q
 from modelcluster.fields import ParentalKey, ParentalManyToManyField
@@ -90,56 +90,63 @@ class Config(ClusterableModel):
         validate_only_one_instance(self)
 
 
-class Member(ClusterableModel):
+class PersonBase(models.Model):
+    first_name = models.CharField(max_length=128)
+    last_name = models.CharField(max_length=128)
+    contact_email = models.EmailField()
+    contact_phone = models.CharField(max_length=10, validators=[MinLengthValidator(10)])
+
+    common_panels = [
+        FieldRowPanel([
+            FieldPanel("first_name"),
+            FieldPanel("last_name"),
+        ]),
+        FieldRowPanel([
+            FieldPanel("contact_email"),
+            FieldPanel("contact_phone")
+        ]),
+    ]
+
+    class Meta:
+        abstract = True
+
+    def full_name(self):
+        return f"{self.first_name} {self.last_name}"
+
+    def __str__(self):
+        return self.full_name()
+
+
+class Member(PersonBase, ClusterableModel):
     config = ParentalKey(Config, on_delete=models.PROTECT, related_name="members")
     share_number = models.IntegerField(primary_key=True,
                                        validators=[
                                            MaxValueValidator(50, message="Cannot exceed 50 shares"),
                                            MinValueValidator(0, message="Share number is less than 1")
                                        ])
-    first_name = models.CharField(max_length=128)
-    last_name = models.CharField(max_length=128)
-    contact_email = models.EmailField()
 
     panels = [
         FieldPanel("config"),
         FieldPanel("share_number"),
-        FieldRowPanel([
-            FieldPanel("first_name"),
-            FieldPanel("last_name"),
-        ]),
-        FieldPanel("contact_email"),
+        ] + PersonBase.common_panels + [
         InlinePanel("family", label="Family", help_text="Include the share owner"),
     ]
 
     def __str__(self):
         share_prefix = '[' + str(self.share_number) + ']: '
-        name = self.first_name + ' ' + self.last_name
-        return share_prefix + name
+        return share_prefix + self.full_name()
 
 
-class FamilyMember(ClusterableModel):
+class FamilyMember(PersonBase, models.Model):
     primary_shareholder = ParentalKey(Member, on_delete=models.CASCADE, related_name="family")
-    first_name = models.CharField(max_length=128)
-    last_name = models.CharField(max_length=128)
-    contact_email = models.EmailField()
 
     panels = [
         FieldPanel("primary_shareholder"),
-        FieldRowPanel([
-            FieldPanel("first_name"),
-            FieldPanel("last_name"),
-        ]),
-        FieldPanel("contact_email"),
-    ]
-
-    def name(self):
-        return self.first_name + ' ' + self.last_name
+    ] + PersonBase.common_panels
 
     def __str__(self):
-        name = self.first_name + ' ' + self.last_name
         share_holder = '(' + str(self.primary_shareholder) + ') '
-        return share_holder + name
+        return share_holder + self.full_name()
 
     def clean(self):
         if not hasattr(self, 'primary_shareholder'):
@@ -183,7 +190,7 @@ class RoomType(ClusterableModel):
         return double_text + join_text + bunk_text
 
 
-class Room(ClusterableModel):
+class Room(models.Model):
     # TODO validators to settings
     config = ParentalKey(Config, on_delete=models.PROTECT, related_name="rooms")
     room_number = models.IntegerField(primary_key=True, validators=[
@@ -196,7 +203,7 @@ class Room(ClusterableModel):
         return str(self.room_number) + ': ' + str(self.room_type)
 
 
-class Season(ClusterableModel):
+class Season(models.Model):
     config = ParentalKey(Config, on_delete=models.PROTECT, related_name="seasons")
 
     class Months(models.IntegerChoices):
@@ -277,7 +284,7 @@ class Season(ClusterableModel):
                     raise ValidationError("This season shares months with %s" % s)
 
 
-class BookingType(ClusterableModel):
+class BookingType(models.Model):
     config = ParentalKey(Config, on_delete=models.PROTECT, related_name="booking_types")
     booking_type_name = models.CharField(max_length=128)
     rate = models.DecimalField(max_digits=8, decimal_places=2)
@@ -286,7 +293,7 @@ class BookingType(ClusterableModel):
         default=False,
         help_text='If set, the fee for this booking is not multiplied by the number of rooms booked')
     banned_rooms = ParentalManyToManyField(Room, blank=True)
-    season_active = ParentalKey(Season, on_delete=models.CASCADE, related_name="booking_types")
+    season_active = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="booking_types")
     minimum_rooms = models.IntegerField("Minimum number of booked rooms", default=0)
 
     class Priorities(models.IntegerChoices):

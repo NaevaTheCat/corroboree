@@ -1,6 +1,11 @@
 # Config notes
 Member 0 is dummy member for maintenance bookings
 
+Currently validation is clean() methods for children of
+`ClusterableModel`s is broken. You have a choice between a convenient
+interface and being able to screw yourself over. Make whatever
+decision you feel comfortable with.
+
 # Booking System Notes
 
 # Site layout and formatting

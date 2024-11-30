@@ -5,7 +5,7 @@ from django import forms
 from django.core.validators import MinValueValidator
 from wagtail.admin import widgets
 
-from corroboree.booking.models import BookingRecord, get_booking_types, check_season_rules
+from corroboree.booking.models import get_booking_types, check_season_rules, booked_rooms
 from corroboree.config import models as config
 
 
@@ -33,7 +33,6 @@ class BookingDateRangeForm(forms.Form):
         ),
     )
 
-    # TODO release weeks 1 chunk at a time. Rounding needed
     def clean(self):
         cleaned_data = super().clean()
         conf = config.Config.objects.get()
@@ -43,7 +42,7 @@ class BookingDateRangeForm(forms.Form):
         tod_rollover = config.Config.objects.get().time_of_day_rollover
         aest_now = datetime.datetime.now(pytz.timezone('Australia/Sydney'))
         compare_date = aest_now.date() if aest_now.time() >= tod_rollover else aest_now.date() - datetime.timedelta(days=1)
-        last_sunday = last_weekday_date(compare_date, conf.week_start_day)
+        last_week_start = last_weekday_date(compare_date, conf.week_start_day)
         max_weeks_till_booking = conf.max_weeks_till_booking
         max_weeks_ahead_start = datetime.timedelta(
             weeks=max_weeks_till_booking
@@ -52,7 +51,7 @@ class BookingDateRangeForm(forms.Form):
             weeks=(1 + max_weeks_till_booking)
         )
         if start_date and end_date:
-            if start_date > last_sunday + max_weeks_ahead_start:
+            if start_date > last_week_start + max_weeks_ahead_start:
                 raise forms.ValidationError(
                     "Start date is more than %s weeks ahead" % max_weeks_till_booking
                 )
@@ -60,7 +59,7 @@ class BookingDateRangeForm(forms.Form):
                 raise forms.ValidationError(
                     "End date must be after start date"
                 )
-            if end_date > last_sunday + max_weeks_ahead_end:
+            if end_date > last_week_start + max_weeks_ahead_end:
                 raise forms.ValidationError(
                     "End date is more than %s weeks ahead" % (max_weeks_till_booking + 1)
                 )
@@ -96,15 +95,7 @@ class BookingRoomChoosingForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.member = member
         if start_date is not None and end_date is not None:
-            current_booking_records = BookingRecord.live_objects.filter(
-                end_date__gt=datetime.date.today(),
-                start_date__lt=end_date,
-            )
-            overlapping_bookings = current_booking_records.exclude(
-                start_date__gte=end_date).exclude(
-                end_date__lte=start_date,
-            )
-            booked_room_ids = overlapping_bookings.values_list('rooms__room_number', flat=True)
+            booked_room_ids = booked_rooms(start_date, end_date)
             possible_booking_types = get_booking_types(conf=config.Config.objects.get(),
                                                        start_date=start_date,
                                                        end_date=end_date)
@@ -120,7 +111,7 @@ class BookingRoomChoosingForm(forms.Form):
                         # Set intersection all rooms and banned rooms. Only leaves rooms that aren't available in any way
                         daily_banned_rooms = daily_banned_rooms & this_banned_rooms
                 banned_rooms = banned_rooms | daily_banned_rooms
-            available_rooms = config.Room.objects.exclude(pk__in=list(booked_room_ids)).exclude(pk__in=banned_rooms)
+            available_rooms = config.Room.objects.exclude(pk__in=booked_room_ids).exclude(pk__in=banned_rooms)
             self.fields["room_selection"].queryset = available_rooms
             self.fields["start_date"].initial = start_date
             self.fields["end_date"].initial = end_date
@@ -143,7 +134,7 @@ class BookingRoomChoosingForm(forms.Form):
 # Custom field for member_in_attendance names
 class MiAModelChoiceField(forms.ModelChoiceField):
     def label_from_instance(self, obj):
-        return obj.first_name + ' ' + obj.last_name
+        return obj.full_name()
 
 
 class BookingRecordMemberInAttendanceForm(forms.Form):
