@@ -1,5 +1,5 @@
 body {
-    max-width: 960px;
+    max-width: 1000px;
     min-height: 100vh;
     margin: 0 auto;
     padding: 0 15px;
@@ -15,12 +15,93 @@ a {
 }
 
 header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+    background-image: url('/media/images/snow-wide.original.jpg');
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
     padding-top: 10px;
     padding-bottom: 10px;
-    border-bottom: 1px solid #e6e6e6;
+    height: 100px;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.user-info h3 {
+    color: white;
+    margin: 0;
+    padding: 0;
+}
+
+/* navigation sidebar */
+.sidebar {
+  margin: 0;
+  padding: 0;
+  width: 200px;
+  background-color: #f1f1f1;
+  position: fixed;
+  height: 100%;
+  overflow: scroll;
+  top: 0;
+  bottom: 0;
+}
+
+.sidebar a {
+    display: block;
+    color: black;
+    padding: 16px;
+    text-decoration: none;
+}
+
+/* Active/current link not implemented yet*/
+.sidebar a.active {
+  background-color: #04AA6D;
+  color: white;
+}
+
+.sidebar a:hover:not(.active) {
+  background-color: #555;
+  color: white;
+}
+
+/* Page content. The value of the margin-left property should match the value of the sidebar's width property */
+div.content {
+  margin-left: 200px;
+  padding: 1px 16px;
+  height: 1000px;
+}
+
+/* On screens that are less than 700px wide, make the sidebar into a topbar */
+@media screen and (max-width: 700px) {
+  .sidebar {
+    width: 100%;
+    height: 50px;
+    position: relative;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+  }
+  .sidebar a {
+      float: none;
+      display: inline-block;
+  }
+  .menu {
+      display: inline-block;
+      vertical-align: top;
+  }
+  div.content {margin-left: 0;}
+}
+
+
+/* On screens that are less than 400px, display the bar vertically, instead of horizontally */
+@media screen and (max-width: 400px) {
+  .sidebar a {
+    text-align: center;
+    float: none;
+  }
 }
 
 .booking-summary-table table {
@@ -91,6 +172,8 @@ button:hover {
 /* Alignment stuff */
 .container {
     display: flex;
+    justify-content: center;
+    text-align: left;
 }
 
 .form-container {
@@ -100,6 +183,10 @@ button:hover {
 
 .calendar-container {
     flex: 2;
+}
+
+.float-right {
+    float: right;
 }
 
 /* Form Styling */
@@ -114,6 +201,12 @@ input[type=checkbox] {
   margin: 6px 0;
 }
 
+.hidden-btn {
+    display: none;
+    visibility: hidden;
+}
+
+.btn-link,
 input[type=button],
 input[type=submit] {
   background-color: #308282;
@@ -127,6 +220,7 @@ input[type=submit] {
   transition-duration: 0.4s;
 }
 
+.btn-link:hover,
 input[type=button]:hover,
 input[type=submit]:hover {
   background-color: #6ec7c7;
