@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.core.mail import send_mail
+from django.conf import settings
 from django.contrib import messages
 from django.db import models
 from django.db.models import Sum, Q
@@ -125,9 +126,9 @@ class BookingRecord(models.Model):
         self.status = status
         self.save()
 
-    def send_related_email(self, subject, email_text):  # TODO: do less in the template, more here in the context
+    def send_related_email(self, subject, email_text):
         """Format and send an email using a django template"""
-        from_email = 'Neige <neige.email@example.com>'  # TODO: Email config should be defined in settings
+        from_email = settings.BOOKING_FROM_EMAIL
         recipients = [self.member.contact_email]
         if self.member_in_attendance.contact_email != self.member.contact_email:
             recipients.append(self.member_in_attendance.contact_email)

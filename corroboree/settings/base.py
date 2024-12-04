@@ -207,6 +207,7 @@ WAGTAIL_USER_CUSTOM_FIELDS = ["member"]
 
 # Email Settings
 DEFAULT_FROM_EMAIL="bookings@localhost"
+BOOKING_FROM_EMAIL="bookings@corroboree"
 
 # OTP Email Settings
 OTP_EMAIL_SENDER = "bookings@corroboree"
