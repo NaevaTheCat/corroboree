@@ -61,12 +61,19 @@ class BookingRecord(models.Model):
         NOT_ISSUED = 'NI'
 
     member = models.ForeignKey(config.Member, on_delete=models.PROTECT, related_name="bookings")
+    member_name_at_creation = models.CharField(max_length=128,
+                                               help_text="The name of the original member who booked. "
+                                                         "Used for record keeping when shares are transferred")
     last_updated = models.DateTimeField(auto_now=True)
     start_date = models.DateField()
     end_date = models.DateField()
     rooms = models.ManyToManyField(config.Room)
     member_in_attendance = models.ForeignKey(config.FamilyMember, on_delete=models.PROTECT, related_name="bookings",
                                              null=True)
+    member_in_attendance_name_at_creation = models.CharField(max_length=128,
+                                                             blank=True,
+                                                             help_text="The name of the original member who booked. "
+                                                                       "Used for record keeping when shares are transferred")
     other_attendees = models.JSONField(default=dict, blank=True)  # {guest_n: {first_name:, last_name:, contact_email:}}
     cost = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus,
@@ -190,10 +197,12 @@ class BookingRecordViewSet(SnippetViewSet):
     ]
     list_export = [
         'member',
+        'member_name_at_creation',
         'last_updated',
         'start_date',
         'end_date',
         'member_in_attendance',
+        'member_in_attendance_name_at_creation',
         'other_attendees',
         'status',
         'payment_status',
@@ -209,8 +218,14 @@ class BookingRecordViewSet(SnippetViewSet):
     filterset_class = BookingRecordFilter
 
     panels = [
-        FieldPanel('member'),
-        FieldPanel('member_in_attendance'),
+        FieldRowPanel([
+            FieldPanel('member'),
+            FieldPanel('member_name_at_creation')
+        ]),
+        FieldRowPanel([
+            FieldPanel('member_in_attendance'),
+            FieldPanel('member_in_attendance_name_at_creation')
+        ]),
         FieldRowPanel([
             FieldPanel('start_date'),
             FieldPanel('end_date'),
@@ -266,9 +281,11 @@ class BookingPage(Page):
                     # Put the booking in the database as a hold and redirect the user to finish it
                     booking_record = BookingRecord(
                         member=member,
+                        member_name_at_creation=member.full_name(),
                         start_date=room_form.cleaned_data.get('start_date'),
                         end_date=room_form.cleaned_data.get('end_date'),
                         member_in_attendance=None,
+                        member_in_attendance_name_at_creation='',
                         cost=None,
                         payment_status=BookingRecord.BookingRecordPaymentStatus.NOT_ISSUED,
                         status=BookingRecord.BookingRecordStatus.IN_PROGRESS
@@ -405,6 +422,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                     if member_in_attendance_form.is_valid():
                         member_in_attendance = member_in_attendance_form.cleaned_data['member_in_attendance']
                         booking.member_in_attendance = member_in_attendance
+                        booking.member_in_attendance_name_at_creation = member_in_attendance.full_name()
                 if guest_forms.is_valid():
                     guests = {}
                     for idguest, guest in enumerate(guest_forms):
