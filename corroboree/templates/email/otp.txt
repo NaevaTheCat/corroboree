@@ -1,0 +1,8 @@
+Your Neige login code:
+{{ token }}
+It will be valid for 5 minutes.
+
+Please enter it into the login form to complete your login
+
+If you did not attempt to login someone may be using your account.
+Please contact a website administrator.

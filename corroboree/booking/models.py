@@ -1,20 +1,21 @@
-import datetime
 from datetime import date, datetime, timedelta
 
+from django.conf import settings
+from django.contrib import messages
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.core.mail import send_mail
-from django.contrib import messages
 from django.db import models
 from django.db.models import Sum, Q
-from django_filters import FilterSet, ModelMultipleChoiceFilter
 from django.forms import formset_factory, CheckboxSelectMultiple
+from django.http import Http404
 from django.shortcuts import render, redirect
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.html import strip_tags
 from django.views.decorators.csrf import csrf_protect
-from django.http import Http404, HttpResponseServerError
+from django_filters import FilterSet, ModelMultipleChoiceFilter, CharFilter, DateFilter, ChoiceFilter
 from wagtail.admin.panels import FieldPanel, FieldRowPanel, MultiFieldPanel
+from wagtail.admin.widgets import AdminDateInput
 from wagtail.contrib.routable_page.models import RoutablePageMixin, path
 from wagtail.fields import RichTextField
 from wagtail.models import Page
@@ -28,6 +29,7 @@ class LiveBookingRecordManager(models.Manager):
     """Filters out records which are not live from querysets.
 
     Live means that they have not been cancelled, expired, or taken place in the past"""
+
     def get_queryset(self):
         status = BookingRecord.BookingRecordStatus
         now = timezone.now()
@@ -61,12 +63,19 @@ class BookingRecord(models.Model):
         NOT_ISSUED = 'NI'
 
     member = models.ForeignKey(config.Member, on_delete=models.PROTECT, related_name="bookings")
+    member_name_at_creation = models.CharField(max_length=128,
+                                               help_text="The name of the original member who booked. "
+                                                         "Used for record keeping when shares are transferred")
     last_updated = models.DateTimeField(auto_now=True)
     start_date = models.DateField()
     end_date = models.DateField()
     rooms = models.ManyToManyField(config.Room)
     member_in_attendance = models.ForeignKey(config.FamilyMember, on_delete=models.PROTECT, related_name="bookings",
                                              null=True)
+    member_in_attendance_name_at_creation = models.CharField(max_length=128,
+                                                             blank=True,
+                                                             help_text="The name of the original member who booked. "
+                                                                       "Used for record keeping when shares are transferred")
     other_attendees = models.JSONField(default=dict, blank=True)  # {guest_n: {first_name:, last_name:, contact_email:}}
     cost = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True)
     payment_status = models.CharField(max_length=2, choices=BookingRecordPaymentStatus,
@@ -118,9 +127,9 @@ class BookingRecord(models.Model):
         self.status = status
         self.save()
 
-    def send_related_email(self, subject, email_text):  # TODO: do less in the template, more here in the context
+    def send_related_email(self, subject, email_text):
         """Format and send an email using a django template"""
-        from_email = 'Neige <neige.email@example.com>'  # TODO: Email config should be defined in settings
+        from_email = settings.BOOKING_FROM_EMAIL
         recipients = [self.member.contact_email]
         if self.member_in_attendance.contact_email != self.member.contact_email:
             recipients.append(self.member_in_attendance.contact_email)
@@ -145,24 +154,43 @@ class BookingRecordFilter(FilterSet):
     rooms = ModelMultipleChoiceFilter(
         queryset=config.Room.objects.all(),
         widget=CheckboxSelectMultiple,
-        label="Rooms",
+        label='Rooms',
         method='filter_rooms',
     )
+    member_last_name = CharFilter(field_name='member__last_name', lookup_expr='iexact', label='Member Last Name')
+    member_first_name = CharFilter(field_name='member__first_name', lookup_expr='iexact', label='Member First Name')
+    member_in_attendance_last_name = CharFilter(field_name='member_in_attendance__last_name', lookup_expr='iexact',
+                                                label='Member in Attendance Last Name')
+    member_in_attendance_first_name = CharFilter(field_name='member_in_attendance__first_name', lookup_expr='iexact',
+                                                 label='Member in Attendance First Name')
+    start_date_lt = DateFilter(field_name='start_date', lookup_expr='lt', label='Start Date Before',
+                               widget=AdminDateInput)
+    start_date_gt = DateFilter(field_name='start_date', lookup_expr='gt', label='Start Date After',
+                               widget=AdminDateInput)
+    end_date_lt = DateFilter(field_name='end_date', lookup_expr='lt', label='End Date Before', widget=AdminDateInput)
+    end_date_gt = DateFilter(field_name='end_date', lookup_expr='gt', label='End Date After', widget=AdminDateInput)
+    status = ChoiceFilter(field_name='status', lookup_expr='exact', label='Status',
+                          choices=BookingRecord.BookingRecordStatus)
+    payment_status = ChoiceFilter(field_name='payment_status', lookup_expr='iexact', label='Payment Status',
+                                  choices=BookingRecord.BookingRecordPaymentStatus)
+    paypal_transaction_id = CharFilter(field_name='paypal_transaction_id', lookup_expr='exact',
+                                       label='PayPal Transaction ID')
+    cost_lt = CharFilter(field_name='cost', lookup_expr='lt', label='Cost Less Than')
+    cost_gt = CharFilter(field_name='cost', lookup_expr='gt', label='Cost Greater Than')
 
     class Meta:
         model = BookingRecord
-        fields = {
-            'member__last_name': ['iexact'],
-            'member__first_name': ['iexact'],
-            'member_in_attendance__last_name': ['iexact'],
-            'member_in_attendance__first_name': ['iexact'],
-            'start_date': ['lt', 'gt'],
-            'end_date': ['lt', 'gt'],
-            'status': ['exact'],
-            'payment_status': ['iexact'],
-            'paypal_transaction_id': ['exact'],
-            'cost': ['lt', 'gt'],
-        }
+        fields = [
+            'member_last_name',
+            'member_first_name',
+            'member_in_attendance_last_name',
+            'member_in_attendance_first_name',
+            'start_date_lt',
+            'start_date_gt',
+            'end_date_lt',
+            'end_date_gt',
+            'rooms',
+        ]
 
     def filter_rooms(self, queryset, name, value):
         for room in value:
@@ -190,10 +218,12 @@ class BookingRecordViewSet(SnippetViewSet):
     ]
     list_export = [
         'member',
+        'member_name_at_creation',
         'last_updated',
         'start_date',
         'end_date',
         'member_in_attendance',
+        'member_in_attendance_name_at_creation',
         'other_attendees',
         'status',
         'payment_status',
@@ -209,8 +239,14 @@ class BookingRecordViewSet(SnippetViewSet):
     filterset_class = BookingRecordFilter
 
     panels = [
-        FieldPanel('member'),
-        FieldPanel('member_in_attendance'),
+        FieldRowPanel([
+            FieldPanel('member'),
+            FieldPanel('member_name_at_creation')
+        ]),
+        FieldRowPanel([
+            FieldPanel('member_in_attendance'),
+            FieldPanel('member_in_attendance_name_at_creation')
+        ]),
         FieldRowPanel([
             FieldPanel('start_date'),
             FieldPanel('end_date'),
@@ -266,9 +302,11 @@ class BookingPage(Page):
                     # Put the booking in the database as a hold and redirect the user to finish it
                     booking_record = BookingRecord(
                         member=member,
+                        member_name_at_creation=member.full_name(),
                         start_date=room_form.cleaned_data.get('start_date'),
                         end_date=room_form.cleaned_data.get('end_date'),
                         member_in_attendance=None,
+                        member_in_attendance_name_at_creation='',
                         cost=None,
                         payment_status=BookingRecord.BookingRecordPaymentStatus.NOT_ISSUED,
                         status=BookingRecord.BookingRecordStatus.IN_PROGRESS
@@ -392,7 +430,8 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                 return self.render(request, template='booking/booking_not_found.html')
             # make a form
             if booking.status != BookingRecord.BookingRecordStatus.FINALISED:
-                member_in_attendance_form = BookingRecordMemberInAttendanceForm(member=member, member_in_attendance=booking.member_in_attendance)
+                member_in_attendance_form = BookingRecordMemberInAttendanceForm(member=member,
+                                                                                member_in_attendance=booking.member_in_attendance)
             else:
                 member_in_attendance_form = None
             max_attendees = booking.rooms.aggregate(max_occupants=Sum('room_type__max_occupants'))['max_occupants']
@@ -405,6 +444,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                     if member_in_attendance_form.is_valid():
                         member_in_attendance = member_in_attendance_form.cleaned_data['member_in_attendance']
                         booking.member_in_attendance = member_in_attendance
+                        booking.member_in_attendance_name_at_creation = member_in_attendance.full_name()
                 if guest_forms.is_valid():
                     guests = {}
                     for idguest, guest in enumerate(guest_forms):
@@ -554,7 +594,8 @@ def refresh_stale_login(request, td=timedelta(days=1)):
 
 def bookings_for_member_in_range(member: config.Member, start_date: date, end_date: date):
     """Given a member and a date range returns bookings for that member within that date range (including partially)"""
-    bookings = member.bookings(manager='live_objects').exclude(end_date__lte=start_date).exclude(start_date__gte=end_date)
+    bookings = member.bookings(manager='live_objects').exclude(end_date__lte=start_date).exclude(
+        start_date__gte=end_date)
     return bookings
 
 

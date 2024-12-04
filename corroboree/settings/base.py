@@ -204,3 +204,13 @@ AUTH_USER_MODEL = 'users.MemberAccount'
 WAGTAIL_USER_EDIT_FORM = "corroboree.users.forms.CustomUserEditForm"
 WAGTAIL_USER_CREATION_FORM = "corroboree.users.forms.CustomUserCreationForm"
 WAGTAIL_USER_CUSTOM_FIELDS = ["member"]
+
+# Email Settings
+DEFAULT_FROM_EMAIL="bookings@localhost"
+BOOKING_FROM_EMAIL="bookings@corroboree"
+
+# OTP Email Settings
+OTP_EMAIL_SENDER = "bookings@corroboree"
+OTP_EMAIL_SUBJECT = "Neige Jindi: Login Code"
+OTP_EMAIL_BODY_TEMPLATE_PATH = "email/otp.txt"
+OTP_EMAIL_BODY_HTML_TEMPLATE_PATH = "email/otp.html"

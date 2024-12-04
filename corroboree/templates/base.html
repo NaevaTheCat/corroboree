@@ -33,10 +33,13 @@
 
     <body class="{% block body_class %}{% endblock %}">
         {% wagtailuserbar %}
-	
+
 	{% include "includes/header.html" %}
-	
-        {% block content %}{% endblock %}
+	{% include "includes/sidebar.html" %}
+
+	<div class="content">
+            {% block content %}{% endblock %}
+	</div>
 
         {# Global javascript #}
         <script type="text/javascript" src="{% static 'js/corroboree.js' %}"></script>

@@ -1,24 +1,33 @@
+{% load static %}
 <!DOCTYPE html>
 <html>
 <head>
   <title>{% block title %}{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet" media="screen">
+  <link rel="stylesheet" type="text/css" href="{% static 'css/corroboree.css' %}">
   <script defer src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
   <script defer src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.5.2/js/bootstrap.min.js"></script>
   {% block extra_media %}{% endblock %}
 </head>
 <body>
-    {% if messages %}
-	{% for message in messages %}
-	    <p{% if message.tags %} class='{{ message.tags }}'{% endif %}>{{ message }}</p>
-	{% endfor %}
-    {% endif %}
+    {% include "includes/header.html" %}
+    {% include "includes/sidebar.html" %}
     {% block content_wrapper %}
-	<div class="container">
+	<div class="container left-align">
+	    {% if messages %}
+		{% for message in messages %}
+		    <p{% if message.tags %} class='{{ message.tags }}'{% endif %}>{{ message }}</p>
+		{% endfor %}
+	    {% endif %}
 	    {% block content %}{% endblock %}
 	</div>
     {% endblock %}
-    <p><a href="{% url 'password_reset' %}">Lost password?</a></p>
+    <div class="container">
+	<div class="row">
+	    <div class="col-md-6 offset-md-3">
+		<p><a href="{% url 'password_reset' %}">Lost password?</a></p>
+	    </div>
+	</div>
+    </div>
 </body>
 </html>

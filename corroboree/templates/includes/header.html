@@ -1,27 +1,20 @@
 {% load wagtailcore_tags navigation_tags %}
 
 <header>
-    <div class="row">
-    {% get_site_root as site_root %}
-    <nav>
-        <p>
-        <a href="{% pageurl site_root %}">Home</a> |
-        {% for menuitem in site_root.get_children.live.in_menu %}
-            <a href="{% pageurl menuitem %}">{{ menuitem.title }}</a>{% if not forloop.last %} | {% endif %}
-        {% endfor %}
-        </p>
-    </nav>
-    </div>
-    <div style='text-align: right;' class="row">
+    <div class="user-info">
 	{% if request.user.is_authenticated %}
 	    <h3>Hello {{ request.user.first_name }} {{ request.user.last_name }}</h3>
+	    <div class='user-btn'>
 	    <form method='get' action='{% url 'password_change' %}'>
 		<button type='submit'>Change password</button>
 	    </form>
+	    </div>
+	    <div class='user-btn'>
 	    <form method="post" action="{% url 'logout' %}">
 		{% csrf_token %}
 		<button type="submit">logout</button>
 	    </form>
+	    </div>
 	{% else %}
             <a href="{% url 'login' %}"><button>Log In</button></a>
 	{% endif %}
