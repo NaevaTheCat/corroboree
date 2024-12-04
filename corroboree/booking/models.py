@@ -7,7 +7,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.db import models
 from django.db.models import Sum, Q
-from django_filters import FilterSet, ModelMultipleChoiceFilter
+from django_filters import FilterSet, ModelMultipleChoiceFilter, CharFilter, DateFilter, ChoiceFilter
 from django.forms import formset_factory, CheckboxSelectMultiple
 from django.shortcuts import render, redirect
 from django.template.loader import render_to_string
@@ -19,6 +19,7 @@ from wagtail.admin.panels import FieldPanel, FieldRowPanel, MultiFieldPanel
 from wagtail.contrib.routable_page.models import RoutablePageMixin, path
 from wagtail.fields import RichTextField
 from wagtail.models import Page
+from wagtail.admin.widgets import AdminDateInput
 from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet
 
@@ -153,24 +154,38 @@ class BookingRecordFilter(FilterSet):
     rooms = ModelMultipleChoiceFilter(
         queryset=config.Room.objects.all(),
         widget=CheckboxSelectMultiple,
-        label="Rooms",
+        label='Rooms',
         method='filter_rooms',
     )
+    member_last_name = CharFilter(field_name='member__last_name', lookup_expr='iexact', label='Member Last Name')
+    member_first_name = CharFilter(field_name='member__first_name', lookup_expr='iexact', label='Member First Name')
+    member_in_attendance_last_name = CharFilter(field_name='member_in_attendance__last_name', lookup_expr='iexact',
+                                                label='Member in Attendance Last Name')
+    member_in_attendance_first_name = CharFilter(field_name='member_in_attendance__first_name', lookup_expr='iexact',
+                                                 label='Member in Attendance First Name')
+    start_date_lt = DateFilter(field_name='start_date', lookup_expr='lt', label='Start Date Before', widget=AdminDateInput)
+    start_date_gt = DateFilter(field_name='start_date', lookup_expr='gt', label='Start Date After', widget=AdminDateInput)
+    end_date_lt = DateFilter(field_name='end_date', lookup_expr='lt', label='End Date Before', widget=AdminDateInput)
+    end_date_gt = DateFilter(field_name='end_date', lookup_expr='gt', label='End Date After', widget=AdminDateInput)
+    status = ChoiceFilter(field_name='status', lookup_expr='exact', label='Status', choices=BookingRecord.BookingRecordStatus)
+    payment_status = ChoiceFilter(field_name='payment_status', lookup_expr='iexact', label='Payment Status', choices=BookingRecord.BookingRecordPaymentStatus)
+    paypal_transaction_id = CharFilter(field_name='paypal_transaction_id', lookup_expr='exact', label='PayPal Transaction ID')
+    cost_lt = CharFilter(field_name='cost', lookup_expr='lt', label='Cost Less Than')
+    cost_gt = CharFilter(field_name='cost', lookup_expr='gt', label='Cost Greater Than')
 
     class Meta:
         model = BookingRecord
-        fields = {
-            'member__last_name': ['iexact'],
-            'member__first_name': ['iexact'],
-            'member_in_attendance__last_name': ['iexact'],
-            'member_in_attendance__first_name': ['iexact'],
-            'start_date': ['lt', 'gt'],
-            'end_date': ['lt', 'gt'],
-            'status': ['exact'],
-            'payment_status': ['iexact'],
-            'paypal_transaction_id': ['exact'],
-            'cost': ['lt', 'gt'],
-        }
+        fields = [
+            'member_last_name',
+            'member_first_name',
+            'member_in_attendance_last_name',
+            'member_in_attendance_first_name',
+            'start_date_lt',
+            'start_date_gt',
+            'end_date_lt',
+            'end_date_gt',
+            'rooms',
+        ]
 
     def filter_rooms(self, queryset, name, value):
         for room in value:
