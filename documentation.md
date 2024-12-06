@@ -23,7 +23,7 @@ menu. The configuration is heirarchy is:
   |- Week start day
   |- Last minute booking weeks
   |- Maximum family members
-  +- Members
+w  +- Members
   |  |- Share number
   |  |- First name
   |  |- Last name
@@ -97,7 +97,21 @@ and if a booking ends within that period normal season rules are suspended.
   
 ## Ongoing Management
 
-TODO: Member change deets, booking book keeping
+### Changing Member Associated with a Share
+
+If a member transfers their share, or otherwise the details of the
+member change then the `Member` details should be updated directly. In
+order to preserve the integrity of the booking system `Members` cannot
+be deleted once they have made a booking.
+
+The full proceedure is to:
+
+- Mark the User account as inactive.
+- Delete the `Family Members` associated with the `Member`.
+- Update the `Member` details and add the necessary `FamilyMembers`.
+- Create or reactivate a User for the new member.
+- Check the new user has a OTP device if reactivating them.
+
 
 # Booking System
 
@@ -207,6 +221,19 @@ two\_factor. Templates are under registration/ and two\_factor/.
 
 # Setting up the website
 
+## Deployment
+
+TODO: write as doing
+
+### Crontab
+
+Set up the crontab to run the commands outlined in [Administration
+Commands](#administration-commands) section.
+
+TODO: samples
+
+## Configuration
+
 (most) Administration is done via the `[site]/admin/` url which is the
 wagtail administration interface. Configuration described in the above
 section takes effect immediately upon saving. Navigating to 'Snippets'
@@ -215,3 +242,129 @@ near name after clicking) or edit existing ones. Some allow you to add
 additional child snippets in their form (e.g. config lets you
 'add members'). Using this is fine, however as of 2024-11-30 some
 validation safeguards are broken so bear that in mind.
+
+### Things to ensure
+
+- Every month in the calendar year is covered by a season.
+- A `Member` with share number 0 exists for maintenance bookings.
+- There is one `BookingType` for every sort of booking in *each*
+  season they are active. If configuring a peak `Season` you will need
+  to replicate the daily/weekly etc rates for that `Season` in the
+  peak.
+- `BookingType` priorities are set correctly.
+
+## Pages
+
+The following top level (i.e. under home) pages need to be set up:
+
+- News (News page)
+- About (Text page)
+- Governance (Policies page)
+- Rates (Rates page)
+- Lodge Facilities and Features Guide (Text page)
+- Contact Us (Contact page)
+- Calendar (Booking calendar)
+- Make a Booking (Booking page)
+- My Booking (Booking page user summary)
+
+Filling out relevant section should mostly be self explanetary
+Governance, Contact, and Rates may need more explanation. If
+doubt remains the 'publish' button in the right menu can be used to
+preview. A page must be 'Published' to be live. In the 'Promote' tab
+the 'Slug' sets the sub url. Additionally all of these top-level pages
+should have 'Show in menus' ticked. Order in the navigation menu can
+be changed by using 'Sort menu order' in the '...' menu next to Home.
+
+To add posts to the news page just add child pages.
+
+### Important Considerations
+
+* Any page which should be private. At minimum:
+
+  -  Make a Booking
+  - My Bookings
+  - Contact Us
+
+But I recommend all, should have the page set to private in the 'i'
+menu in the information menu when creating or editing the page.
+
+* The 'Slug' for Make a booking and My bookings must be set to:
+  - make-a-booking
+  - my-bookings
+
+Respectively. These urls are used in other bits of code which can't
+easily communicate with wagtail.
+
+### Governance, Contact, and Rates
+
+These pages use a wagtail structure called 'stream fields' which
+enforces more structure on the contents of the page. Content is added
+by way of adding 'blocks' that are packages of content which will be
+displayed in a predefined way.
+
+Governance uses the following:
+- Policy, which refers to a child page of type 'Policy page' (this
+  must be set up before adding a Policy)
+- Section, which adds a subheading and optionally a paragraph of text
+  introducing the section
+- Policy with subpolicies, like Policy however you can also add child
+  pages of the Policy page as indented links. Like Policy these must
+  be saved before they can be added.
+  
+Rates uses the following:
+- Season rates, a set of tables (add with +) that use a `Season` as a
+  heading and below that have:
+  - Rates, which is a display name and a `BookingType`. Note you are
+    not restricted to bookings under the same season. This is so if a
+    peak `Season` has the same rates you can display it under the same heading.
+- Notes, a heading and then a series of notes under that heading
+
+Contact Us uses the following:
+- Heading, a heading
+- Board contacts, a table of contacts with a position on the board
+- Responsibility, a section which describes a responsibility and a
+  member with that responsibility
+
+## Users
+
+### User Groups
+
+By default there are 2 groups that administration users can be
+assigned to. Editors and Moderators.
+
+Editor is a suitable role for anyone who is able to edit but not
+publish changes to pages.
+
+Additionally an administrator role should be created, along with a
+booking officer role. Assigning permissions as appropriated. The
+booking officer should only be able to edit and view booking
+records.
+
+Groups which should have access to the administration interface will
+need that ticked.
+
+Another group should be created called 'Members', give it no
+permissions. It is used to make sure share accounts are separate from
+administration accounts.
+
+### Provisioning Users
+
+As of 2024-12-06 provisioning and onboarding new users is a somewhat
+manual process. See
+https://github.com/NaevaTheCat/corroboree/issues/34 for updates.
+
+For each share a user account should be set up. That user account
+should be associated with a member during creation. The User should be
+assigned the Member group. A password will need to be set for the user
+(a site such as https://memorablepasswordgenerator.com/ can make the
+process simpler). Once a user is created, email the user and tell them
+to use the 'lost password' function of the website to change their
+password. Alternatively you could email the user with their generated
+password, but there is a risk they will not change it.
+
+When a user account is created, a 2fa device is automatically created
+using their email. These can be viewed at the `/django-admin/`
+interface (same sign in) under 'OTP_EMAIL' email devices.
+
+Every user must have an email device configured, named 'default'
+although unless something breaks this shouldn't need touching.
