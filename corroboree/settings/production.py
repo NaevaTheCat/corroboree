@@ -23,6 +23,11 @@ EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL')
 EMAIL_SSL_KEYFILE = os.getenv('EMAIL_SSL_KEYFILE')
 EMAIL_SSL_CERTFILE = os.getenv('EMAIL_SSL_CERTFILE')
 
+ALLOWED_HOSTS = ['.example.com']
+
+CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = True
+
 try:
     from .local import *
 except ImportError:
