@@ -38,6 +38,45 @@ DATABASES = {
 }
 
 
+LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+                'superverbose': {
+                        'format': '%(levelname)s %(asctime)s %(module)s:%(lineno)d %(process)d %(thread)d %(message)s'
+                        },
+                'verbose': {
+                        'format': '%(levelname)s %(asctime)s %(module)s:%(lineno)d %(message)s'
+                        },
+                'simple': {
+                        'format': '%(levelname)s %(message)s'
+                        },
+        },
+        'handlers': {
+                'console': {
+                        'class': 'logging.StreamHandler',
+                        'formatter': 'verbose',
+                        },
+                },
+        'root': {
+                'handlers': ['console'],
+                'level': 'INFO',
+                'formatter': 'verbose',
+                },
+        'loggers': {
+                'django.utils.autoreload': {
+                        'handlers': [],
+                        'level': 'ERROR',
+                        },
+
+                'django': {
+                        'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+                        'handlers': ['console'],
+                        'propagate': True,
+                        },
+                }
+        }
+
 try:
     from .local import *
 except ImportError:
