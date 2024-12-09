@@ -56,9 +56,10 @@ PAYPAL_CLIENT_ID = settings.PAYPAL_CLIENT_ID
 PAYPAL_CLIENT_SECRET = settings.PAYPAL_CLIENT_SECRET
 PAYPAL_MERCHANT_EMAIL = settings.PAYPAL_MERCHANT_EMAIL
 PAYPAL_MERCHANT_ID = settings.PAYPAL_MERCHANT_ID
+PAYPAL_SANDBOX = settings.PAYPAL_SANDBOX
 
 # Set paypal environment based on django
-if settings.DEBUG == True:
+if PAYPAL_SANDBOX:
     paypal_environment = Environment.SANDBOX
 else:
     paypal_environment = Environment.PRODUCTION
