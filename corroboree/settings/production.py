@@ -28,6 +28,16 @@ ALLOWED_HOSTS = ['.example.com']
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
 
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'OPTIONS': {
+            'read_default_file': os.path.join(BASE_DIR, 'corroboree/settings/my.cnf'),
+        },
+    }
+}
+
+
 try:
     from .local import *
 except ImportError:
