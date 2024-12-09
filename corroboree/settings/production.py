@@ -32,7 +32,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
         'OPTIONS': {
-            'read_default_file': os.path.join(BASE_DIR, '/corroboree/settings/my.cnf'),
+            'read_default_file': os.path.join(BASE_DIR, '/corroboree/settings/database.cnf'),
         },
     }
 }
