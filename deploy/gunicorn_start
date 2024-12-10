@@ -1,13 +1,13 @@
 #!/bin/bash
 
 NAME="corroboree"
-DJANGODIR=/opt/wagtail/hello
-USER=wagtail
-GROUP=wagtail
-WORKERS=3
+DJANGODIR=/opt/wagtail/corroboree
+USER=neigejindi
+GROUP=neigejindi
+WORKERS=8
 BIND=unix:/opt/wagtail/run/gunicorn.sock
-DJANGO_SETTINGS_MODULE=hello.settings.production
-DJANGO_WSGI_MODULE=hello.wsgi
+DJANGO_SETTINGS_MODULE=corroboree.settings.production
+DJANGO_WSGI_MODULE=corroboree.wsgi
 LOGLEVEL=error
 
 cd $DJANGODIR
