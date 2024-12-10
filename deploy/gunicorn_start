@@ -1,0 +1,26 @@
+#!/bin/bash
+
+NAME="corroboree"
+DJANGODIR=/opt/wagtail/hello
+USER=wagtail
+GROUP=wagtail
+WORKERS=3
+BIND=unix:/opt/wagtail/run/gunicorn.sock
+DJANGO_SETTINGS_MODULE=hello.settings.production
+DJANGO_WSGI_MODULE=hello.wsgi
+LOGLEVEL=error
+
+cd $DJANGODIR
+source /opt/wagtail/.venv/bin/activate
+
+export DJANGO_SETTINGS_MODULE=$DJANGO_SETTINGS_MODULE
+export PYTHONPATH=$DJANGODIR:$PYTHONPATH
+
+exec /opt/wagtail/.venv/bin/gunicorn ${DJANGO_WSGI_MODULE}:application \
+  --name $NAME \
+  --workers $WORKERS \
+  --user=$USER \
+  --group=$GROUP \
+  --bind=$BIND \
+  --log-level=$LOGLEVEL \
+  --log-file=-
