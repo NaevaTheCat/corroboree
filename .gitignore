@@ -167,4 +167,4 @@ cython_debug/
 paypal-testing/
 
 # DB settings
-corroboree/settings/database.cnf
+corroboree/settings/my.cnf
