@@ -163,7 +163,7 @@ cython_debug/
 .idea/
 
 # paypal related stuff
-.env
+.env*
 paypal-testing/
 
 # DB settings

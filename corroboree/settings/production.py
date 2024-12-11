@@ -15,15 +15,13 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # Email SMTP settings
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = os.getenv('EMAIL_HOST')
-EMAIL_PORT = os.getenv('EMAIL_PORT')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT'))
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS')
-EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL')
-EMAIL_SSL_KEYFILE = os.getenv('EMAIL_SSL_KEYFILE')
-EMAIL_SSL_CERTFILE = os.getenv('EMAIL_SSL_CERTFILE')
+EMAIL_USE_TLS = bool(os.getenv('EMAIL_USE_TLS'))
+EMAIL_USE_SSL = bool(os.getenv('EMAIL_USE_SSL'))
 
-ALLOWED_HOSTS = ['.example.com']
+ALLOWED_HOSTS = ['neigejindi.com.au', 'www.neigejindi.com.au', 'corroboree.neigejindi.com.au']
 
 CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SECURE = True
@@ -37,6 +35,8 @@ DATABASES = {
     }
 }
 
+CONN_MAX_AGE = 9000
+CONN_HEALTH_CHECKS = True
 
 LOGGING = {
         'version': 1,
