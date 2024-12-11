@@ -292,7 +292,7 @@ class BookingType(models.Model):
     is_flat_rate = models.BooleanField(
         default=False,
         help_text='If set, the fee for this booking is not multiplied by the number of rooms booked')
-    banned_rooms = ParentalManyToManyField(Room, blank=True)
+    banned_rooms = models.ManyToManyField(Room, blank=True)
     season_active = models.ForeignKey(Season, on_delete=models.CASCADE, related_name="booking_types")
     minimum_rooms = models.IntegerField("Minimum number of booked rooms", default=0)
 
