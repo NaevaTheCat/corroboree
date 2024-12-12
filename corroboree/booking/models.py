@@ -664,8 +664,9 @@ def check_season_rules(member: config.Member, start_date: datetime.date, end_dat
         # Assuming the end date is already otherwise valid you can book anything 2 weeks out
         return
     for start, end in date_range_to_month_ranges(start_date, end_date):
+        room_start, room_end = daterange_of_a_in_b(start_date, end_date, start, end)
         overlapping_bookings = bookings_for_member_in_range(member, start, end)
-        occupancy_array = room_occupancy_array(start, end, rooms, overlapping_bookings)
+        occupancy_array = room_occupancy_array(start, end, rooms, room_start, room_end, overlapping_bookings)
         season_in_month = conf.seasons_in_date_range(start, end)
         # account for peak seasons
         if season_in_month.count() == 1:
@@ -716,23 +717,32 @@ def date_range_to_month_ranges(start: datetime.date, end: datetime.date) -> [(da
     return result
 
 
+def daterange_of_a_in_b(a_start: date, a_end: date, b_start: date, b_end: date) -> (date, date):
+    """Returns the subset of the range a which is in range b"""
+    overlap_start = max(a_start, b_start)
+    overlap_end = min(a_end, b_end)
+    return overlap_start, overlap_end
+
 def last_day_of_month(day: datetime.date):
     next_month = day.replace(day=28) + timedelta(days=4)
     return next_month - timedelta(days=next_month.day)
 
 
-def room_occupancy_array(start_date: datetime.date, end_date: datetime.date, rooms: [config.Room],
+def room_occupancy_array(start: date, end: date, rooms: [config.Room], room_start: date, room_end: date,
                          other_bookings: [BookingRecord]):
     """create a list of lists where the inner lists represent the number of rooms booked by that booking on that day"""
     # on reflection this might be overkill and could probably just be a list of the sum of rooms booked on that day?
+    # TODO: length = (end - start).days is 1 day short of the full month, the last day of room_start -> end isn't 'occupied' but more nuance is needed to handle the difference between the booking ending or continuing past the month
     array = []
-    length = (end_date - start_date).days
-    array.append([len(rooms)] * length)
+    length = (end - start).days
+    start_delta = max(0, (room_start - start).days)
+    end_delta = max(0, (end - room_end).days)
+    array.append([0] * start_delta + [len(rooms)] * (length - (start_delta + end_delta)) + [0] * end_delta)
     for this_booking in other_bookings:
         num_rooms = this_booking.rooms.all().count()
         # pad a list with the days vacant at start or end, so we know the rooms on each day
-        start_delta = max(0, (this_booking.start_date - start_date).days)
-        end_delta = max(0, (end_date - this_booking.end_date).days)
+        start_delta = max(0, (this_booking.start_date - start).days)
+        end_delta = max(0, (end - this_booking.end_date).days)
         array.append([0] * start_delta + [num_rooms] * (length - (start_delta + end_delta)) + [0] * end_delta)
     return array
 
