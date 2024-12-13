@@ -1,7 +1,7 @@
 <h2> Booking Confirmation </h2>
 
 <p> {{ email_text }}
-    Period: {{ booking.start_date }} - {{ booking.end_date }}
+    Period: {{ booking.arrival_date }} - {{ booking.departure_date }}
     Rooms: <ul>{% for room in booking.rooms.all %}
         <li>{{ room.room_number }}: {{room.room_type}}</li>{% endfor %}</ul>
     Member in attendance: {{ booking.member_in_attendance.first_name }} {{ booking.member_in_attendance.last_name }}

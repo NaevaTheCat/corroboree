@@ -19,8 +19,8 @@ RenderMode = Literal[
 
 @register.inclusion_tag('templatetags/booking_record.html')
 def render_booking_record(booking: BookingRecord, render_mode: RenderMode):
-    start_date = booking.start_date
-    end_date = booking.end_date
+    arrival_date = booking.arrival_date
+    departure_date = booking.departure_date
     rooms = booking.rooms.all()
     member_in_attendance = booking.member_in_attendance
     cost = booking.cost
@@ -36,8 +36,8 @@ def render_booking_record(booking: BookingRecord, render_mode: RenderMode):
         if not empty:
             attendees_cleaned[key] = guest
     return {
-        'start_date': start_date,
-        'end_date': end_date,
+        'arrival_date': arrival_date,
+        'departure_date': departure_date,
         'rooms': rooms,
         'member_in_attendance': member_in_attendance,
         'cost': cost,

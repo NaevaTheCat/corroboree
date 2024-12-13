@@ -17,8 +17,8 @@
     {% endif %}
 {% endcomment %}
 
-<td>{{ start_date }}</td>
-<td>{{ end_date }}</td>
+<td>{{ arrival_date }}</td>
+<td>{{ departure_date }}</td>
 <td><ul>{% for room in rooms %}<li>Room {{room}}</li>{% endfor %}</ul></td>
 {% if render_mode == 'COST_SUMMARY' or render_mode == 'FULL' or render_mode == 'SUMMARY' %}
 <td>${{ cost }}</td>
