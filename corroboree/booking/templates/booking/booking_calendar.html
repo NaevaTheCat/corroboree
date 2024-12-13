@@ -54,8 +54,18 @@
 		 fetchRoomAvailability(info.startStr, info.endStr);
              },
 	     select: function(info) {
-		 var start = info.startStr;
-		 var end = info.endStr;
+		 var start = new Date(info.startStr);
+		 var end = new Date(info.endStr);
+
+		 if ((end.getTime() - start.getTime()) === 86400000) {
+		     // Do not subtract a day if only one day is selected
+             end = end.toISOString().split('T')[0];
+         } else {
+		     // select range is always 1 more, correct that for intuitive behaviour with booking system
+		     end.setDate(end.getDate() - 1);
+		     end = end.toISOString().split('T')[0];
+		 }
+		 start = start.toISOString().split('T')[0];
 		 window.location.href = `/make-a-booking/?arrival_date=${start}&departure_date=${end}`;
 	     },
 	     eventDidMount: function(info) {
