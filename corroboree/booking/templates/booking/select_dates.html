@@ -35,22 +35,30 @@
              return urlParams.get(param);
 	 }
 	 
-     var start = getQueryParam('arrival_date');
-     var end = getQueryParam('departure_date');
+	 function getInputValueById(id) {
+	     return document.getElementById(id).value;
+	 }
+	 
+         var start = getQueryParam('arrival_date');
+         var end = getQueryParam('departure_date');
 
 	 if (!start || !end) {
-             var today = new Date();
-             var currentDay = today.getDay();
-	     // Calculate the start date as next Saturday
-             var startOffset = (currentDay === 7) ? 0 : (7 - currentDay);
-             var startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + startOffset);
+	     start = getInputValueById('id_arrival_date');
+	     end = getInputValueById('id_departure_date');
+	     if (!start || !end) {
+		 var today = new Date();
+		 var currentDay = today.getDay();
+		 // Calculate the start date as next Saturday
+		 var startOffset = (currentDay === 7) ? 0 : (7 - currentDay);
+		 var startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + startOffset);
              
-             // Calculate the end date as the following Saturday
-             var endOffset = startOffset + 6; 
-             var endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + endOffset);
+		 // Calculate the end date as the following Saturday
+		 var endOffset = startOffset + 6; 
+		 var endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + endOffset);
 	     
-             start = startDate.toISOString().split('T')[0];
-             end = endDate.toISOString().split('T')[0];
+		 start = startDate.toISOString().split('T')[0];
+		 end = endDate.toISOString().split('T')[0];
+	     }
 	 }
 	 
 	 function fetchRoomAvailability(start, end) {

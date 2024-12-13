@@ -296,7 +296,7 @@ class BookingPage(Page):
                 room_form = BookingRoomChoosingForm(
                     request.POST,
                     arrival_date=date.fromisoformat(request.POST['arrival_date']),
-                    departure_date=date.fromisoformat(request.POST['arrival_date']),
+                    departure_date=date.fromisoformat(request.POST['departure_date']),
                     member=member)
                 if room_form.is_valid():
                     # Put the booking in the database as a hold and redirect the user to finish it
