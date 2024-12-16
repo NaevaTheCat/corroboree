@@ -729,15 +729,15 @@ def room_occupancy_array(start: date, end: date, rooms: [config.Room], room_star
     # on reflection this might be overkill and could probably just be a list of the sum of rooms booked on that day?
     # TODO: length = (end - start).days is 1 day short of the full month, the last day of room_start -> end isn't 'occupied' but more nuance is needed to handle the difference between the booking ending or continuing past the month
     array = []
-    length = (end - start).days
+    length = (end - start).days + 1
     start_delta = max(0, (room_start - start).days)
-    end_delta = max(0, (end - room_end).days)
+    end_delta = max(0, (end - room_end).days + 1)  # last day is not occupied
     array.append([0] * start_delta + [len(rooms)] * (length - (start_delta + end_delta)) + [0] * end_delta)
     for this_booking in other_bookings:
         num_rooms = this_booking.rooms.all().count()
         # pad a list with the days vacant at start or end, so we know the rooms on each day
         start_delta = max(0, (this_booking.arrival_date - start).days)
-        end_delta = max(0, (end - this_booking.departure_date).days)
+        end_delta = max(0, (end - this_booking.departure_date).days + 1) # last day is not occupied
         array.append([0] * start_delta + [num_rooms] * (length - (start_delta + end_delta)) + [0] * end_delta)
     return array
 
