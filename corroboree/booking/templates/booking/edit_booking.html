@@ -11,8 +11,8 @@
 	<table border=1>
 	<thead>
 	    <tr>
-		<th>Start Date</th>
-		<th>End Date</th>
+		<th>Arrival Date</th>
+		<th>Departure Date</th>
 		<th>Rooms</th>
 		<th>Cost</th>
 	    </tr>
@@ -20,6 +20,7 @@
 	<tbody>
 	    <tr>
 		{% render_booking_record booking 'COST_SUMMARY' %}
+			<td><a href='{% pageurl page %}cancel/{{ booking.pk }}'>Cancel</a></td>
 	    </tr>
 	</tbody>
 	</table>

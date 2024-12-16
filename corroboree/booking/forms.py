@@ -11,8 +11,8 @@ from corroboree.config import models as config
 
 # TODO round to week chunks
 class BookingDateRangeForm(forms.Form):
-    start_date = forms.DateField(
-        label="Start date",
+    arrival_date = forms.DateField(
+        label="Arrival date",
         validators=[
             MinValueValidator(datetime.datetime.now(pytz.timezone('Australia/Sydney')).date()),
         ],
@@ -23,8 +23,8 @@ class BookingDateRangeForm(forms.Form):
             }
         ),
     )
-    end_date = forms.DateField(
-        label="End date",
+    departure_date = forms.DateField(
+        label="Departure date",
         widget=widgets.AdminDateInput(
             attrs={
                 "placeholder": "dd-mm-yyyy",
@@ -36,8 +36,8 @@ class BookingDateRangeForm(forms.Form):
     def clean(self):
         cleaned_data = super().clean()
         conf = config.Config.objects.get()
-        start_date = cleaned_data.get("start_date")
-        end_date = cleaned_data.get("end_date")
+        arrival_date = cleaned_data.get("arrival_date")
+        departure_date = cleaned_data.get("departure_date")
         # Time of day rollover checking
         tod_rollover = config.Config.objects.get().time_of_day_rollover
         aest_now = datetime.datetime.now(pytz.timezone('Australia/Sydney'))
@@ -50,24 +50,24 @@ class BookingDateRangeForm(forms.Form):
         max_weeks_ahead_end = datetime.timedelta(
             weeks=(1 + max_weeks_till_booking)
         )
-        if start_date and end_date:
-            if start_date > last_week_start + max_weeks_ahead_start:
+        if arrival_date and departure_date:
+            if arrival_date > last_week_start + max_weeks_ahead_start:
                 raise forms.ValidationError(
-                    "Start date is more than %s weeks ahead" % max_weeks_till_booking
+                    "Arrival date is more than %s weeks ahead" % max_weeks_till_booking
                 )
-            if not end_date > start_date:
+            if not departure_date > arrival_date:
                 raise forms.ValidationError(
-                    "End date must be after start date"
+                    "Departure date must be after arrival date"
                 )
-            if end_date > last_week_start + max_weeks_ahead_end:
+            if departure_date > last_week_start + max_weeks_ahead_end:
                 raise forms.ValidationError(
-                    "End date is more than %s weeks ahead" % (max_weeks_till_booking + 1)
+                    "Departure date is more than %s weeks ahead" % (max_weeks_till_booking + 1)
                 )
 
 
 class BookingRoomChoosingForm(forms.Form):
-    start_date = forms.DateField(
-        label="Start date",
+    arrival_date = forms.DateField(
+        label="Arrival date",
         widget=widgets.AdminDateInput(
             attrs={
                 "placeholder": "dd-mm-yyyy",
@@ -76,8 +76,8 @@ class BookingRoomChoosingForm(forms.Form):
             }
         ),
     )
-    end_date = forms.DateField(
-        label="End date",
+    departure_date = forms.DateField(
+        label="Departure date",
         widget=widgets.AdminDateInput(
             attrs={
                 "placeholder": "dd-mm-yyyy",
@@ -91,14 +91,14 @@ class BookingRoomChoosingForm(forms.Form):
         widget=forms.CheckboxSelectMultiple,
     )
 
-    def __init__(self, *args, start_date=None, end_date=None, member=None, **kwargs):
+    def __init__(self, *args, arrival_date=None, departure_date=None, member=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.member = member
-        if start_date is not None and end_date is not None:
-            booked_room_ids = booked_rooms(start_date, end_date)
+        if arrival_date is not None and departure_date is not None:
+            booked_room_ids = booked_rooms(arrival_date, departure_date)
             possible_booking_types = get_booking_types(conf=config.Config.objects.get(),
-                                                       start_date=start_date,
-                                                       end_date=end_date)
+                                                       arrival_date=arrival_date,
+                                                       departure_date=departure_date)
             banned_rooms = config.Room.objects.none()  # empty queryset we will build up to filter available rooms with
             for day in possible_booking_types:
                 daily_banned_rooms = config.Room.objects.all()
@@ -113,8 +113,8 @@ class BookingRoomChoosingForm(forms.Form):
                 banned_rooms = banned_rooms | daily_banned_rooms
             available_rooms = config.Room.objects.exclude(pk__in=booked_room_ids).exclude(pk__in=banned_rooms)
             self.fields["room_selection"].queryset = available_rooms
-            self.fields["start_date"].initial = start_date
-            self.fields["end_date"].initial = end_date
+            self.fields["arrival_date"].initial = arrival_date
+            self.fields["departure_date"].initial = departure_date
 
     def clean(self):
         cleaned_data = super().clean()
@@ -125,8 +125,8 @@ class BookingRoomChoosingForm(forms.Form):
             )
         check_season_rules(
             member=self.member,
-            start_date=cleaned_data.get('start_date'),
-            end_date=cleaned_data.get('end_date'),
+            arrival_date=cleaned_data.get('arrival_date'),
+            departure_date=cleaned_data.get('departure_date'),
             rooms=room_selection,
         )
 

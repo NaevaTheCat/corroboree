@@ -11,6 +11,30 @@
 		{{ date_form }}
 		<input type="submit" value="{% if room_form %}Search again{% else %}Search dates{% endif %}">
 	    </form>
+
+	    <script>
+	      document.addEventListener('DOMContentLoaded', function() {
+		  var arrivalDateInput = document.getElementById('id_arrival_date');
+		  var departureDateInput = document.getElementById('id_departure_date');
+		  
+		  // Set the date picker to highlight the day after arrival date
+		  departureDateInput.addEventListener('focus', function() {
+		      var arrivalDate = new Date(arrivalDateInput.value);
+		      if (arrivalDateInput.value) {
+			  arrivalDate.setDate(arrivalDate.getDate() + 1);
+			  this.value = arrivalDate.toISOString().split('T')[0];
+		      } else {
+			  this.removeAttribute('value'); // Do not set value if arrival date is not selected
+		      }
+		  });
+		  
+		  departureDateInput.addEventListener('blur', function() {
+		      if (!this.value) {
+			  this.removeAttribute('value'); // Clear the value after user interaction
+		      }
+		  });
+	      });
+	    </script>
 	    
 	    {% if room_form %}
 		<form action="." method="POST">
@@ -21,7 +45,8 @@
 	    {% endif %}
 	</div>
 	<div class='calendar-container'>
-	    <div id='calendar'></div>
+	  {{ page.calendar_text | richtext }}
+	  <div id='calendar'></div>
 	</div>
     </div>
     <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js'></script>
@@ -35,22 +60,30 @@
              return urlParams.get(param);
 	 }
 	 
-	 var start = getQueryParam('start_date');
-         var end = getQueryParam('end_date');
+	 function getInputValueById(id) {
+	     return document.getElementById(id).value;
+	 }
+	 
+         var start = getQueryParam('arrival_date');
+         var end = getQueryParam('departure_date');
 
 	 if (!start || !end) {
-             var today = new Date();
-             var currentDay = today.getDay();
-	     // Calculate the start date as next Saturday
-             var startOffset = (currentDay === 7) ? 0 : (7 - currentDay);
-             var startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + startOffset);
+	     start = getInputValueById('id_arrival_date');
+	     end = getInputValueById('id_departure_date');
+	     if (!start || !end) {
+		 var today = new Date();
+		 var currentDay = today.getDay();
+		 // Calculate the start date as next Saturday
+		 var startOffset = (currentDay === 7) ? 0 : (7 - currentDay);
+		 var startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + startOffset);
              
-             // Calculate the end date as the following Saturday
-             var endOffset = startOffset + 6; 
-             var endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + endOffset);
+		 // Calculate the end date as the following Saturday
+		 var endOffset = startOffset + 6; 
+		 var endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() + endOffset);
 	     
-             start = startDate.toISOString().split('T')[0];
-             end = endDate.toISOString().split('T')[0];
+		 start = startDate.toISOString().split('T')[0];
+		 end = endDate.toISOString().split('T')[0];
+	     }
 	 }
 	 
 	 function fetchRoomAvailability(start, end) {
@@ -122,12 +155,13 @@
 	     views: {
 		 dayGridSomeLength: {
 		     type: 'dayGrid',
-		     duration: { days: (new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24) + 1 } // date maths is fun
+		     duration: { days: (new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24)} // date maths is fun
 		 }
 	     },
 	     datesSet: function(info) {
 		 fetchRoomAvailability(info.startStr, info.endStr);
              },
+	     eventOrder: 'title',
          });
          
          calendar.render();

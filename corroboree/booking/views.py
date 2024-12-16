@@ -31,15 +31,15 @@ def get_room_availability(request):
     first_day = datetime.datetime.fromisoformat(request.GET.get('start')).date()
     last_day = datetime.datetime.fromisoformat(request.GET.get('end')).date()
     current_bookings = BookingRecord.live_objects.filter(
-        end_date__gt=first_day,
-        start_date__lte=last_day
+        departure_date__gt=first_day,
+        arrival_date__lte=last_day
     )
     free_rooms = [Config.objects.get().rooms.all()] * (last_day - first_day).days
     for this_booking in current_bookings:
         this_rooms = this_booking.rooms.all()
         # pad a list with the days vacant at start or end, so we know the rooms on each day
-        start_offset = (this_booking.start_date - first_day).days
-        end_offset = (this_booking.end_date - first_day).days
+        start_offset = (this_booking.arrival_date - first_day).days
+        end_offset = (this_booking.departure_date - first_day).days
         for day in range(len(free_rooms)):
             if start_offset <= day < end_offset:
                 free_rooms[day] = free_rooms[day].difference(this_rooms)
@@ -56,9 +56,10 @@ PAYPAL_CLIENT_ID = settings.PAYPAL_CLIENT_ID
 PAYPAL_CLIENT_SECRET = settings.PAYPAL_CLIENT_SECRET
 PAYPAL_MERCHANT_EMAIL = settings.PAYPAL_MERCHANT_EMAIL
 PAYPAL_MERCHANT_ID = settings.PAYPAL_MERCHANT_ID
+PAYPAL_SANDBOX = settings.PAYPAL_SANDBOX
 
 # Set paypal environment based on django
-if settings.DEBUG == True:
+if PAYPAL_SANDBOX:
     paypal_environment = Environment.SANDBOX
 else:
     paypal_environment = Environment.PRODUCTION
@@ -156,8 +157,8 @@ def capture_booking_order(request):
         booking.update_status(BookingRecord.BookingRecordStatus.FINALISED)
         booking.send_related_email(
             subject='Neige Booking Confirmation: {start} - {end}'.format(
-                start=booking.start_date,
-                end=booking.end_date,
+                start=booking.arrival_date,
+                end=booking.departure_date,
             ),
             email_text='The following booking has been confirmed and paid for:'
         )  # TODO: this text etc should probably be in the configuration

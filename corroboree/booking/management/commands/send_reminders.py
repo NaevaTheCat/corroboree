@@ -22,7 +22,7 @@ class Command(BaseCommand):
             try:
                 with transaction.atomic():
                     booking.send_related_email(
-                        subject=f'Neige Booking Reminder: {booking.start_date} - {booking.end_date}',
+                        subject=f'Neige Booking Reminder: {booking.arrival_date} - {booking.departure_date}',
                         email_text='Please confirm the guests for your upcoming booking:'
                     )
                     booking.reminder_sent = True

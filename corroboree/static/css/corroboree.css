@@ -1,5 +1,5 @@
 body {
-    max-width: 1000px;
+    max-width: 1100px;
     min-height: 100vh;
     margin: 0 auto;
     padding: 0 15px;
@@ -73,7 +73,6 @@ header {
 div.content {
   margin-left: 200px;
   padding: 1px 16px;
-  height: 1000px;
 }
 
 /* On screens that are less than 700px wide, make the sidebar into a topbar */
@@ -106,21 +105,35 @@ div.content {
   }
 }
 
-.booking-summary-table table {
-  table-layout: fixed;
-  width: 100%;
-  border-collapse: collapse;
+div.login {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
 }
 
-.contacts-table table,
-.rates-table table {
-  table-layout: fixed;
+div.booking-summary-table,
+div.contacts-table,
+div.rates-table,
+div.form-table {
+    overflow-x: auto;
+}
+
+.booking-summary-table table {
+    table-layout: auto;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.contacts-table table {
+  table-layout: auto;
   width: 80%;
   border-collapse: collapse;
   margin-left: auto;
   margin-right: auto;
 }
 
+.rates-table table,
 .form-table table {
   table-layout: fixed;
   width: 80%;
@@ -193,7 +206,8 @@ button:hover {
 
 /* Form Styling */
 input[type=text],
-input[type=email] {
+input[type=email],
+input[type=password] {
   width: 80%;
 }
 

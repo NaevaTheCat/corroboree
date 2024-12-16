@@ -67,8 +67,8 @@ class BookingRecord(models.Model):
                                                help_text="The name of the original member who booked. "
                                                          "Used for record keeping when shares are transferred")
     last_updated = models.DateTimeField(auto_now=True)
-    start_date = models.DateField()
-    end_date = models.DateField()
+    arrival_date = models.DateField()
+    departure_date = models.DateField()
     rooms = models.ManyToManyField(config.Room)
     member_in_attendance = models.ForeignKey(config.FamilyMember, on_delete=models.PROTECT, related_name="bookings",
                                              null=True)
@@ -90,8 +90,8 @@ class BookingRecord(models.Model):
     def __str__(self):
         return '[{id}] {start} - {end}: {member}'.format(
             id=self.pk,
-            start=self.start_date,
-            end=self.end_date,
+            start=self.arrival_date,
+            end=self.departure_date,
             member=self.member,
         )
 
@@ -100,7 +100,7 @@ class BookingRecord(models.Model):
         return ', '.join(str(r) for r in rooms)
 
     def calculate_booking_cart(self, conf: config.Config):
-        booking_types = get_booking_types(conf, self.start_date, self.end_date)
+        booking_types = get_booking_types(conf, self.arrival_date, self.departure_date)
         cost = 0
         for day in booking_types:
             # add the cost of the highest (smallest int) priority booking mult by rooms
@@ -163,12 +163,12 @@ class BookingRecordFilter(FilterSet):
                                                 label='Member in Attendance Last Name')
     member_in_attendance_first_name = CharFilter(field_name='member_in_attendance__first_name', lookup_expr='iexact',
                                                  label='Member in Attendance First Name')
-    start_date_lt = DateFilter(field_name='start_date', lookup_expr='lt', label='Start Date Before',
+    arrival_date_lt = DateFilter(field_name='arrival_date', lookup_expr='lt', label='Arrival Date Before',
                                widget=AdminDateInput)
-    start_date_gt = DateFilter(field_name='start_date', lookup_expr='gt', label='Start Date After',
+    arrival_date_gt = DateFilter(field_name='arrival_date', lookup_expr='gt', label='Arrival Date After',
                                widget=AdminDateInput)
-    end_date_lt = DateFilter(field_name='end_date', lookup_expr='lt', label='End Date Before', widget=AdminDateInput)
-    end_date_gt = DateFilter(field_name='end_date', lookup_expr='gt', label='End Date After', widget=AdminDateInput)
+    departure_date_lt = DateFilter(field_name='departure_date', lookup_expr='lt', label='Departure Date Before', widget=AdminDateInput)
+    departure_date_gt = DateFilter(field_name='departure_date', lookup_expr='gt', label='Departure Date After', widget=AdminDateInput)
     status = ChoiceFilter(field_name='status', lookup_expr='exact', label='Status',
                           choices=BookingRecord.BookingRecordStatus)
     payment_status = ChoiceFilter(field_name='payment_status', lookup_expr='iexact', label='Payment Status',
@@ -185,10 +185,10 @@ class BookingRecordFilter(FilterSet):
             'member_first_name',
             'member_in_attendance_last_name',
             'member_in_attendance_first_name',
-            'start_date_lt',
-            'start_date_gt',
-            'end_date_lt',
-            'end_date_gt',
+            'arrival_date_lt',
+            'arrival_date_gt',
+            'departure_date_lt',
+            'departure_date_gt',
             'rooms',
         ]
 
@@ -207,8 +207,8 @@ class BookingRecordViewSet(SnippetViewSet):
     add_to_admin_menu = True
     list_display = [
         'member',
-        'start_date',
-        'end_date',
+        'arrival_date',
+        'departure_date',
         'member_in_attendance',
         'status',
         'payment_status',
@@ -220,8 +220,8 @@ class BookingRecordViewSet(SnippetViewSet):
         'member',
         'member_name_at_creation',
         'last_updated',
-        'start_date',
-        'end_date',
+        'arrival_date',
+        'departure_date',
         'member_in_attendance',
         'member_in_attendance_name_at_creation',
         'other_attendees',
@@ -248,8 +248,8 @@ class BookingRecordViewSet(SnippetViewSet):
             FieldPanel('member_in_attendance_name_at_creation')
         ]),
         FieldRowPanel([
-            FieldPanel('start_date'),
-            FieldPanel('end_date'),
+            FieldPanel('arrival_date'),
+            FieldPanel('departure_date'),
         ]),
         FieldPanel('rooms', widget=CheckboxSelectMultiple),
         FieldPanel('other_attendees'),
@@ -268,10 +268,12 @@ register_snippet(BookingRecordViewSet)
 class BookingPage(Page):
     intro = RichTextField(blank=True)
     not_authorised_message = RichTextField(blank=True)
+    calendar_text = RichTextField(blank=True, help_text="Text to display above the vacancy calendar")
 
     content_panels = Page.content_panels + [
         FieldPanel("intro"),
-        FieldPanel("not_authorised_message")
+        FieldPanel("not_authorised_message"),
+        FieldPanel("calendar_text")
     ]
 
     parent_page_types = ['home.HomePage']
@@ -295,16 +297,16 @@ class BookingPage(Page):
             if request.method == "POST":
                 room_form = BookingRoomChoosingForm(
                     request.POST,
-                    start_date=date.fromisoformat(request.POST['start_date']),
-                    end_date=date.fromisoformat(request.POST['end_date']),
+                    arrival_date=date.fromisoformat(request.POST['arrival_date']),
+                    departure_date=date.fromisoformat(request.POST['departure_date']),
                     member=member)
                 if room_form.is_valid():
                     # Put the booking in the database as a hold and redirect the user to finish it
                     booking_record = BookingRecord(
                         member=member,
                         member_name_at_creation=member.full_name(),
-                        start_date=room_form.cleaned_data.get('start_date'),
-                        end_date=room_form.cleaned_data.get('end_date'),
+                        arrival_date=room_form.cleaned_data.get('arrival_date'),
+                        departure_date=room_form.cleaned_data.get('departure_date'),
                         member_in_attendance=None,
                         member_in_attendance_name_at_creation='',
                         cost=None,
@@ -317,18 +319,18 @@ class BookingPage(Page):
                     booking_record.calculate_booking_cart(config.Config.objects.get())
                     return redirect('/my-bookings/edit/%s' % booking_record.pk)
                 # Preset the date values on the date form for consistency
-                start_date = room_form.data.get("start_date")
-                end_date = room_form.data.get("end_date")
+                arrival_date = room_form.data.get("arrival_date")
+                departure_date = room_form.data.get("departure_date")
                 date_form = BookingDateRangeForm(initial={
-                    "start_date": start_date,
-                    'end_date': end_date,
+                    "arrival_date": arrival_date,
+                    'departure_date': departure_date,
                 })
             else:
                 date_form = BookingDateRangeForm(request.GET or None)
                 if date_form.is_valid():
-                    start_date = date_form.cleaned_data.get("start_date")
-                    end_date = date_form.cleaned_data.get("end_date")
-                    room_form = BookingRoomChoosingForm(start_date=start_date, end_date=end_date, member=member)
+                    arrival_date = date_form.cleaned_data.get("arrival_date")
+                    departure_date = date_form.cleaned_data.get("departure_date")
+                    room_form = BookingRoomChoosingForm(arrival_date=arrival_date, departure_date=departure_date, member=member)
 
             return render(request, 'booking/select_dates.html', {
                 "page": self,
@@ -393,15 +395,15 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
             today = date.today()
             bookings = BookingRecord.live_objects.filter(member__exact=member)
             upcoming_bookings = bookings.filter(
-                end_date__gt=today,
+                departure_date__gt=today,
                 status__exact=BookingRecord.BookingRecordStatus.FINALISED
-            ).order_by('start_date')
+            ).order_by('arrival_date')
             in_progress_bookings = bookings.filter(
                 status__exact=BookingRecord.BookingRecordStatus.IN_PROGRESS
-            ).order_by('start_date')
+            ).order_by('arrival_date')
             submitted_bookings = bookings.filter(
                 status__exact=BookingRecord.BookingRecordStatus.SUBMITTED
-            ).order_by('start_date')
+            ).order_by('arrival_date')
             return self.render(request, context_overrides={
                 'title': 'My Bookings',
                 'upcoming_bookings': upcoming_bookings,
@@ -463,8 +465,8 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                     else:  # Booking is already submitted or finalised
                         booking.send_related_email(
                             subject='Neige Booking Updated: {start} - {end}'.format(
-                                start=booking.start_date,
-                                end=booking.end_date
+                                start=booking.arrival_date,
+                                end=booking.departure_date
                             ),
                             email_text='The guest list has been updated:'
                         )
@@ -574,7 +576,10 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
 
 
 class BookingCalendar(Page):
-    content_panels = Page.content_panels
+    caption = RichTextField(blank=True, help_text='Displays under the calendar')
+    content_panels = Page.content_panels + [
+        FieldPanel('caption')
+    ]
 
     parent_page_types = ['home.HomePage']
     subpage_types = []
@@ -592,41 +597,41 @@ def refresh_stale_login(request, td=timedelta(days=1)):
         return None
 
 
-def bookings_for_member_in_range(member: config.Member, start_date: date, end_date: date):
+def bookings_for_member_in_range(member: config.Member, arrival_date: date, departure_date: date):
     """Given a member and a date range returns bookings for that member within that date range (including partially)"""
-    bookings = member.bookings(manager='live_objects').exclude(end_date__lte=start_date).exclude(
-        start_date__gte=end_date)
+    bookings = member.bookings(manager='live_objects').exclude(departure_date__lte=arrival_date).exclude(
+        arrival_date__gte=departure_date)
     return bookings
 
 
-def dates_to_weeks(start_date: date, end_date: date, week_start_day=5) -> (int, int, int):
+def dates_to_weeks(arrival_date: date, departure_date: date, week_start_day=5) -> (int, int, int):
     """For a date range and day of week return the number of weeks and surrounding 'spare' days
 
     Using datetime weekday ints monday=0 sunday=6.
     """
-    total_days = (end_date - start_date).days
-    start_weekday = start_date.weekday()
-    end_weekday = end_date.weekday()
+    total_days = (departure_date - arrival_date).days
+    start_weekday = arrival_date.weekday()
+    end_weekday = departure_date.weekday()
     leading_days = (week_start_day - start_weekday) % 7
     if total_days <= leading_days:
         return total_days, 0, 0
     else:
         trailing_days = (7 - (week_start_day - end_weekday)) % 7
-        from_week = start_date + timedelta(days=leading_days)
-        till_week = end_date - timedelta(days=trailing_days)
+        from_week = arrival_date + timedelta(days=leading_days)
+        till_week = departure_date - timedelta(days=trailing_days)
         weeks = int((till_week - from_week).days / 7)
         return leading_days, weeks, trailing_days
 
 
-def get_booking_types(conf: config.Config, start_date: date, end_date: date):
+def get_booking_types(conf: config.Config, arrival_date: date, departure_date: date):
     """Returns a dictionary of date-keyed booking type querysets with dates matching either a week start or a 'spare' day
 
     Assumes that a week has a weekly booking type. Will not return daily bookings for week-equivalent dates"""
-    leading_days, weeks, trailing_days = dates_to_weeks(start_date, end_date, week_start_day=conf.week_start_day)
-    seasons = list(conf.seasons_in_date_range(start_date, end_date))
-    leading_dates = [start_date + timedelta(days=x) for x in range(leading_days)]
-    week_dates = [start_date + timedelta(days=leading_days + x * 7) for x in range(weeks)]
-    trailing_dates = [start_date + timedelta(days=7 * weeks + leading_days + x) for x in range(trailing_days)]
+    leading_days, weeks, trailing_days = dates_to_weeks(arrival_date, departure_date, week_start_day=conf.week_start_day)
+    seasons = list(conf.seasons_in_date_range(arrival_date, departure_date))
+    leading_dates = [arrival_date + timedelta(days=x) for x in range(leading_days)]
+    week_dates = [arrival_date + timedelta(days=leading_days + x * 7) for x in range(weeks)]
+    trailing_dates = [arrival_date + timedelta(days=7 * weeks + leading_days + x) for x in range(trailing_days)]
     booking_types = {}
     for day in leading_dates:
         season_on_day = seasons_to_season_on_day(seasons, day)
@@ -654,18 +659,19 @@ def seasons_to_season_on_day(seasons: [config.Season], day: date) -> config.Seas
     return season_on_day
 
 
-def check_season_rules(member: config.Member, start_date: datetime.date, end_date: datetime.date, rooms: [config.Room]):
+def check_season_rules(member: config.Member, arrival_date: datetime.date, departure_date: datetime.date, rooms: [config.Room]):
     """ Given a member, a range of dates, and the rooms they would like to book for those dates. Validates the season rules which apply"""
     conf = config.Config.objects.get()  # only valid for single config
     if member.share_number == 0:
         # Maintenance booking, allow anything
         return
-    elif end_date <= date.today() + timedelta(weeks=conf.last_minute_booking_weeks):
+    elif departure_date <= date.today() + timedelta(weeks=conf.last_minute_booking_weeks):
         # Assuming the end date is already otherwise valid you can book anything 2 weeks out
         return
-    for start, end in date_range_to_month_ranges(start_date, end_date):
+    for start, end in date_range_to_month_ranges(arrival_date, departure_date):
+        room_start, room_end = daterange_of_a_in_b(arrival_date, departure_date, start, end)
         overlapping_bookings = bookings_for_member_in_range(member, start, end)
-        occupancy_array = room_occupancy_array(start, end, rooms, overlapping_bookings)
+        occupancy_array = room_occupancy_array(start, end, rooms, room_start, room_end, overlapping_bookings)
         season_in_month = conf.seasons_in_date_range(start, end)
         # account for peak seasons
         if season_in_month.count() == 1:
@@ -682,7 +688,7 @@ def check_season_rules(member: config.Member, start_date: datetime.date, end_dat
                         'This booking exceeds the {max} simultaneous rooms limit for {season} on {date}'.format(
                             max=season_in_month.max_monthly_simultaneous_rooms,
                             season=season_in_month.season_name,
-                            date=start_date + timedelta(days=sum_rooms.index(max(sum_rooms))),
+                            date=arrival_date + timedelta(days=sum_rooms.index(max(sum_rooms))),
                         )
                     )
             if season_in_month.max_monthly_room_weeks is not None:
@@ -716,36 +722,45 @@ def date_range_to_month_ranges(start: datetime.date, end: datetime.date) -> [(da
     return result
 
 
+def daterange_of_a_in_b(a_start: date, a_end: date, b_start: date, b_end: date) -> (date, date):
+    """Returns the subset of the range a which is in range b"""
+    overlap_start = max(a_start, b_start)
+    overlap_end = min(a_end, b_end)
+    return overlap_start, overlap_end
+
 def last_day_of_month(day: datetime.date):
     next_month = day.replace(day=28) + timedelta(days=4)
     return next_month - timedelta(days=next_month.day)
 
 
-def room_occupancy_array(start_date: datetime.date, end_date: datetime.date, rooms: [config.Room],
+def room_occupancy_array(start: date, end: date, rooms: [config.Room], room_start: date, room_end: date,
                          other_bookings: [BookingRecord]):
     """create a list of lists where the inner lists represent the number of rooms booked by that booking on that day"""
     # on reflection this might be overkill and could probably just be a list of the sum of rooms booked on that day?
+    # TODO: length = (end - start).days is 1 day short of the full month, the last day of room_start -> end isn't 'occupied' but more nuance is needed to handle the difference between the booking ending or continuing past the month
     array = []
-    length = (end_date - start_date).days
-    array.append([len(rooms)] * length)
+    length = (end - start).days
+    start_delta = max(0, (room_start - start).days)
+    end_delta = max(0, (end - room_end).days)
+    array.append([0] * start_delta + [len(rooms)] * (length - (start_delta + end_delta)) + [0] * end_delta)
     for this_booking in other_bookings:
         num_rooms = this_booking.rooms.all().count()
         # pad a list with the days vacant at start or end, so we know the rooms on each day
-        start_delta = max(0, (this_booking.start_date - start_date).days)
-        end_delta = max(0, (end_date - this_booking.end_date).days)
+        start_delta = max(0, (this_booking.arrival_date - start).days)
+        end_delta = max(0, (end - this_booking.departure_date).days)
         array.append([0] * start_delta + [num_rooms] * (length - (start_delta + end_delta)) + [0] * end_delta)
     return array
 
 
-def booked_rooms(start_date, end_date) -> [int]:
+def booked_rooms(arrival_date, departure_date) -> [int]:
     """Returns a flat list of room numbers currently booked between dates"""
     current_booking_records = BookingRecord.live_objects.filter(
-        end_date__gt=date.today(),
-        start_date__lt=end_date,
+        departure_date__gt=date.today(),
+        arrival_date__lt=departure_date,
     )
     overlapping_bookings = current_booking_records.exclude(
-        start_date__gte=end_date).exclude(
-        end_date__lte=start_date,
+        arrival_date__gte=departure_date).exclude(
+        departure_date__lte=arrival_date,
     )
     booked_room_ids = overlapping_bookings.values_list('rooms__room_number', flat=True)
     return booked_room_ids

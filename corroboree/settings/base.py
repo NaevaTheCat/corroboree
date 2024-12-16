@@ -24,7 +24,9 @@ PAYPAL_CLIENT_ID = os.getenv('PAYPAL_CLIENT_ID')
 PAYPAL_CLIENT_SECRET = os.getenv('PAYPAL_CLIENT_SECRET')
 PAYPAL_MERCHANT_EMAIL = os.getenv('PAYPAL_MERCHANT_EMAIL')
 PAYPAL_MERCHANT_ID = os.getenv('PAYPAL_MERCHANT_ID')
-SECURE_CROSS_ORIGIN_OPENER_POLICY='same-origin-allow-popups' # fixes paypal popup
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'  # fixes paypal popup
+PAYPAL_SANDBOX = True
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
@@ -105,13 +107,6 @@ WSGI_APPLICATION = "corroboree.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
-    }
-}
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
 # Password validation
@@ -206,11 +201,11 @@ WAGTAIL_USER_CREATION_FORM = "corroboree.users.forms.CustomUserCreationForm"
 WAGTAIL_USER_CUSTOM_FIELDS = ["member"]
 
 # Email Settings
-DEFAULT_FROM_EMAIL="bookings@localhost"
-BOOKING_FROM_EMAIL="bookings@corroboree"
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
+BOOKING_FROM_EMAIL = os.getenv('BOOKING_FROM_EMAIL')
 
 # OTP Email Settings
-OTP_EMAIL_SENDER = "bookings@corroboree"
+OTP_EMAIL_SENDER = os.getenv('OTP_EMAIL_SENDER')
 OTP_EMAIL_SUBJECT = "Neige Jindi: Login Code"
 OTP_EMAIL_BODY_TEMPLATE_PATH = "email/otp.txt"
 OTP_EMAIL_BODY_HTML_TEMPLATE_PATH = "email/otp.html"
