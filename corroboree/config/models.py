@@ -56,7 +56,10 @@ class Config(ClusterableModel):
                             FieldPanel("first_name"),
                             FieldPanel("last_name"),
                         ]),
+                        FieldRowPanel([
                         FieldPanel("contact_email"),
+                        FieldPanel("contact_phone")
+                        ]),
                     ]),
         FieldPanel("number_of_rooms"),
         InlinePanel("room_types", label="Room Types",
