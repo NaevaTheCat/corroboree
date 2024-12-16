@@ -112,21 +112,28 @@ div.login {
     flex-direction: column;
 }
 
-.booking-summary-table table {
-  table-layout: fixed;
-  width: 100%;
-  border-collapse: collapse;
+div.booking-summary-table,
+div.contacts-table,
+div.rates-table,
+div.form-table {
+    overflow-x: auto;
 }
 
-.contacts-table table,
-.rates-table table {
-  table-layout: fixed;
+.booking-summary-table table {
+    table-layout: auto;
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.contacts-table table {
+  table-layout: auto;
   width: 80%;
   border-collapse: collapse;
   margin-left: auto;
   margin-right: auto;
 }
 
+.rates-table table,
 .form-table table {
   table-layout: fixed;
   width: 80%;
