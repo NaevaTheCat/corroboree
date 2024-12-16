@@ -1,5 +1,5 @@
 body {
-    max-width: 1000px;
+    max-width: 1100px;
     min-height: 100vh;
     margin: 0 auto;
     padding: 0 15px;
@@ -73,7 +73,6 @@ header {
 div.content {
   margin-left: 200px;
   padding: 1px 16px;
-  height: 1000px;
 }
 
 /* On screens that are less than 700px wide, make the sidebar into a topbar */
@@ -104,6 +103,13 @@ div.content {
     text-align: center;
     float: none;
   }
+}
+
+div.login {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
 }
 
 .booking-summary-table table {
@@ -193,7 +199,8 @@ button:hover {
 
 /* Form Styling */
 input[type=text],
-input[type=email] {
+input[type=email],
+input[type=password] {
   width: 80%;
 }
 

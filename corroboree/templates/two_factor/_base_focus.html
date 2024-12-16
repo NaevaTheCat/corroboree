@@ -1,11 +1,10 @@
 {% extends "two_factor/_base.html" %}
 
 {% block content_wrapper %}
-  <div class="container">
-    <div class="row">
-      <div class="col-md-5 offset-md-3">
+  <div class="content">
+    <div class="login">
         {% block content %}{% endblock %}
-      </div>
+    		<p><a href="{% url 'password_reset' %}">Lost password?</a></p>
     </div>
   </div>
 {% endblock %}
