@@ -576,7 +576,10 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
 
 
 class BookingCalendar(Page):
-    content_panels = Page.content_panels
+    caption = RichTextField(blank=True, help_text='Displays under the calendar')
+    content_panels = Page.content_panels + [
+        FieldPanel('caption')
+    ]
 
     parent_page_types = ['home.HomePage']
     subpage_types = []
