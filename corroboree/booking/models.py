@@ -268,10 +268,12 @@ register_snippet(BookingRecordViewSet)
 class BookingPage(Page):
     intro = RichTextField(blank=True)
     not_authorised_message = RichTextField(blank=True)
+    calendar_text = RichTextField(blank=True, help_text="Text to display above the vacancy calendar")
 
     content_panels = Page.content_panels + [
         FieldPanel("intro"),
-        FieldPanel("not_authorised_message")
+        FieldPanel("not_authorised_message"),
+        FieldPanel("calendar_text")
     ]
 
     parent_page_types = ['home.HomePage']
