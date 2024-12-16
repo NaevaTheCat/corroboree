@@ -681,16 +681,6 @@ def check_season_rules(member: config.Member, arrival_date: datetime.date, depar
         sum_rooms = []
         for day in range(0, len(occupancy_array[0])):
             sum_rooms.append(sum([booked_rooms[day] for booked_rooms in occupancy_array]))
-            if season_in_month.max_monthly_simultaneous_rooms is not None:
-                # test the number of max rooms
-                if max(sum_rooms) > season_in_month.max_monthly_simultaneous_rooms:
-                    raise ValidationError(
-                        'This booking exceeds the {max} simultaneous rooms limit for {season} on {date}'.format(
-                            max=season_in_month.max_monthly_simultaneous_rooms,
-                            season=season_in_month.season_name,
-                            date=arrival_date + timedelta(days=sum_rooms.index(max(sum_rooms))),
-                        )
-                    )
             if season_in_month.max_monthly_room_weeks is not None:
                 if sum(sum_rooms) / 7 > season_in_month.max_monthly_room_weeks:
                     raise ValidationError(

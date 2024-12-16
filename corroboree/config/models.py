@@ -226,8 +226,6 @@ class Season(models.Model):
     season_name = models.CharField(max_length=128)
     max_monthly_room_weeks = models.IntegerField(blank=True, null=True,
                                                  help_text="Leave blank for no limit")
-    max_monthly_simultaneous_rooms = models.IntegerField(blank=True, null=True,
-                                                         help_text="Leave blank for no limit")
     start_month = models.IntegerField(choices=Months,
                                       help_text="The season will begin at the first day of the selected month")
     end_month = models.IntegerField(choices=Months,
@@ -238,7 +236,6 @@ class Season(models.Model):
         FieldPanel("config"),
         FieldPanel("season_name"),
         FieldRowPanel([
-            FieldPanel('max_monthly_simultaneous_rooms'),
             FieldPanel("max_monthly_room_weeks"),
         ]),
         FieldRowPanel([
