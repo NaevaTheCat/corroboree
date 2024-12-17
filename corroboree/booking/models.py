@@ -168,6 +168,7 @@ class BookingCartPeriod:
         self.valid_booking_types = (None, None)
         self.booking_type = None
         self.cost = None
+        self.set_valid_booking_types()
 
     def __repr__(self):
         return (f"BookingPeriod(start_date={self.start_date}, end_date={self.end_date}, "

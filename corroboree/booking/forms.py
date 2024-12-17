@@ -5,7 +5,7 @@ from django import forms
 from django.core.validators import MinValueValidator
 from wagtail.admin import widgets
 
-from corroboree.booking.models import get_booking_types, check_season_rules, booked_rooms, last_weekday_date
+from corroboree.booking.models import get_booking_types, check_season_rules, booked_rooms, last_weekday_date, create_booking_cart_periods
 from corroboree.config import models as config
 
 
@@ -96,22 +96,12 @@ class BookingRoomChoosingForm(forms.Form):
         self.member = member
         if arrival_date is not None and departure_date is not None:
             booked_room_ids = booked_rooms(arrival_date, departure_date)
-            possible_booking_types = get_booking_types(conf=config.Config.objects.get(),
-                                                       arrival_date=arrival_date,
-                                                       departure_date=departure_date)
+            booking_periods = create_booking_cart_periods(arrival_date, departure_date)
             banned_rooms = config.Room.objects.none()  # empty queryset we will build up to filter available rooms with
-            for day in possible_booking_types:
-                daily_banned_rooms = config.Room.objects.all()
-                if possible_booking_types[day].count() == 0:
-                    # No bookings possible on a day/week during range i.e. all rooms are banned and we can stop looking
-                    daily_banned_rooms = config.Room.objects.all()
-                else:
-                    for booking_type in possible_booking_types[day]:
-                        this_banned_rooms = booking_type.banned_rooms.all()
-                        # Set intersection all rooms and banned rooms. Only leaves rooms that aren't available in any way
-                        daily_banned_rooms = daily_banned_rooms & this_banned_rooms
-                banned_rooms = banned_rooms | daily_banned_rooms
-            available_rooms = config.Room.objects.exclude(pk__in=booked_room_ids).exclude(pk__in=banned_rooms)
+            for p in booking_periods:
+                banned_rooms = banned_rooms.union(p.banned_rooms())
+            banned_room_ids = banned_rooms.values_list('room_number')
+            available_rooms = config.Room.objects.exclude(pk__in=booked_room_ids).exclude(pk__in=banned_room_ids)
             self.fields["room_selection"].queryset = available_rooms
             self.fields["arrival_date"].initial = arrival_date
             self.fields["departure_date"].initial = departure_date
