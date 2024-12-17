@@ -102,21 +102,24 @@ class BookingRecord(models.Model):
         rooms = list(self.rooms.all())
         return ', '.join(str(r) for r in rooms)
 
-    def calculate_booking_cart(self, conf: config.Config):
-        booking_types = get_booking_types(conf, self.arrival_date, self.departure_date)
+    def calculate_booking_cart(self):
+        periods = create_booking_cart_periods(self.arrival_date, self.departure_date)
         cost = 0
-        for day in booking_types:
-            # add the cost of the highest (smallest int) priority booking mult by rooms
-            booking_type = booking_types[day].exclude(
-                banned_rooms__in=self.rooms.all()).exclude(
-                minimum_rooms__gt=self.rooms.count()).order_by(
-                'priority_rank').first()
-            if booking_type.is_flat_rate:
-                cost += booking_type.rate
-            else:
-                cost += self.rooms.count() * booking_type.rate
+        for p in periods:
+            p.set_rooms(self.rooms.all())
+            p.set_cost()
+            cost = cost + p.cost
         self.cost = cost
         self.save()
+    # TODO: Proper workflow n shit for the periods and showing them. Serialise?
+    def explain_booking_cart(self):  # Temporary generator
+        periods = create_booking_cart_periods(self.arrival_date, self.departure_date)
+        strs = []
+        for p in periods:
+            p.set_rooms(self.rooms.all())
+            p.set_cost()
+            strs.append(str(p))
+        return strs
 
     def update_payment_status(self, status: BookingRecordPaymentStatus, transaction_id=None):
         # TODO: validate allowed state transition
@@ -177,6 +180,11 @@ class BookingCartPeriod:
                 f"is_flexible_period={self.is_flexible_period}, "
                 f"is_last_minute_period={self.is_last_minute_period}, "
                 f"booking_type={self.booking_type}, cost={self.cost})")
+
+    def __str__(self):
+        return (f"BookingPeriod: {self.start_date} - {self.end_date}, "
+                f"season {self.start_season}, booking_type {self.booking_type}, "
+                f"cost ${self.cost}")
 
     def set_rooms(self, rooms: QuerySet[Room]):
         self.rooms = rooms
@@ -417,7 +425,7 @@ class BookingPage(Page):
                     booking_record.save()
                     rooms = room_form.cleaned_data.get('room_selection')
                     booking_record.rooms.set(rooms)
-                    booking_record.calculate_booking_cart(config.Config.objects.get())
+                    booking_record.calculate_booking_cart()
                     return redirect('/my-bookings/edit/%s' % booking_record.pk)
                 # Preset the date values on the date form for consistency
                 arrival_date = room_form.data.get("arrival_date")
@@ -579,6 +587,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                                context_overrides={
                                    'title': 'Edit Booking',
                                    'booking': booking,
+                                   'booking_cart': booking.explain_booking_cart(),
                                    'member_in_attendance_form': member_in_attendance_form,
                                    'guest_forms': guest_forms,
                                },

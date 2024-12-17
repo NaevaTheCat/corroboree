@@ -7,6 +7,9 @@
 
     {{ page.edit_text | richtext }}
 
+<ul>{% for period in booking_cart %}
+	<li>{{ period }}</li>{% endfor %}</ul>
+
     <div class='booking-summary-table'>
 	<table border=1>
 	<thead>
