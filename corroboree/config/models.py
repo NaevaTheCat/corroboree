@@ -27,14 +27,17 @@ class Config(ClusterableModel):
         Friday = 4
         Saturday = 5
         Sunday = 6
-    max_weeks_till_booking = models.IntegerField(default=26)
+    max_weeks_till_booking = models.IntegerField(default=26,
+                                                 help_text="Weeks are released in 7 day chunks by counting from 'week start day' this many weeks from the most recent start day.")
     time_of_day_rollover = models.TimeField(
         help_text="What time of day to open bookings for the day max_weeks_till_booking from now")
-    number_of_rooms = models.IntegerField(default=9)
     week_start_day = models.IntegerField(choices=Weekday,
                                          help_text="The day used to determine when a week starts")
+    flexible_booking_weeks = models.IntegerField(default=13,
+                                                  help_text="Period to allow BookingTypes that reference requiring flexible booking periods in.")
     last_minute_booking_weeks = models.IntegerField(default=2,
                                                     help_text="Number of weeks for last minute booking rules to apply")
+    number_of_rooms = models.IntegerField(default=9)
     maximum_family_members = models.IntegerField(
         default=10,
         help_text="maximum authorised family members including primary shareholder"
@@ -44,6 +47,7 @@ class Config(ClusterableModel):
         FieldPanel("week_start_day"),
         FieldRowPanel([
             FieldPanel("max_weeks_till_booking"),
+            FieldPanel("flexible_booking_weeks"),
             FieldPanel("last_minute_booking_weeks"),
             FieldPanel("time_of_day_rollover"),
         ]),
@@ -231,12 +235,14 @@ class Season(models.Model):
     end_month = models.IntegerField(choices=Months,
                                     help_text="The season will end at the end of the last day of the selected month")
     season_is_peak = models.BooleanField()
+    requires_strict_weeks = models.BooleanField(help_text="Determines whether only 7 day periods starting on 'week start day' count as weeks.")
 
     panels = [
         FieldPanel("config"),
         FieldPanel("season_name"),
         FieldRowPanel([
             FieldPanel("max_monthly_room_weeks"),
+            FieldPanel("requires_strict_weeks"),
         ]),
         FieldRowPanel([
             FieldPanel("start_month"),
@@ -289,6 +295,10 @@ class BookingType(models.Model):
     booking_type_name = models.CharField(max_length=128)
     rate = models.DecimalField(max_digits=8, decimal_places=2)
     is_full_week_only = models.BooleanField(default=False)
+    sets_weekly_rate_cap = models.BooleanField(default=False,
+                                               help_text="Whether this fair sets the maximum weekly rate")
+    requires_flexible_booking_period = models.BooleanField(default=False)
+    requires_last_minute_booking_period = models.BooleanField(default=False)
     is_flat_rate = models.BooleanField(
         default=False,
         help_text='If set, the fee for this booking is not multiplied by the number of rooms booked')
@@ -310,8 +320,15 @@ class BookingType(models.Model):
         FieldRowPanel([
             FieldPanel("season_active"),
             FieldPanel("rate"),
-            FieldPanel("is_full_week_only"),
             FieldPanel('is_flat_rate'),
+        ]),
+        FieldRowPanel([
+            FieldPanel("is_full_week_only"),
+            FieldPanel("sets_weekly_rate_cap"),
+        ]),
+        FieldRowPanel([
+            FieldPanel("requires_flexible_booking_period"),
+            FieldPanel("requires_last_minute_booking_period"),
         ]),
         FieldPanel("banned_rooms", widget=forms.CheckboxSelectMultiple),
         FieldPanel("minimum_rooms"),
@@ -331,3 +348,13 @@ class BookingType(models.Model):
         if similar_priority_bookings.count() > 0:
             raise ValidationError(
                 "Overlapping priority with BookingType: %s" % similar_priority_bookings.get().booking_type_name)
+        # Ensure there is only one weekly rate cap and that it is a weekly booking
+        if self.sets_weekly_rate_cap:
+            if not self.is_full_week_only:
+                raise ValidationError(
+                    "Only a weekly booking type can set the weekly rate cap for this season")
+            rate_cap_bookings = self.season_active.booking_types.filter(sets_weekly_rate_cap=True).exclude(pk=self.pk)
+            if rate_cap_bookings.count() > 0:
+                raise ValidationError(
+                    "There is already a weekly rate cap for this season set by BookingType: %s" % rate_cap_bookings.get().booking_type_name
+                )
