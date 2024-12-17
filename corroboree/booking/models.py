@@ -5,7 +5,7 @@ from django.contrib import messages
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.core.mail import send_mail
 from django.db import models
-from django.db.models import Sum, Q
+from django.db.models import Sum, Q, QuerySet
 from django.forms import formset_factory, CheckboxSelectMultiple
 from django.http import Http404
 from django.shortcuts import render, redirect
@@ -23,6 +23,7 @@ from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet
 
 from corroboree.config import models as config
+from corroboree.config.models import Season, Room
 
 
 class LiveBookingRecordManager(models.Manager):
@@ -148,6 +149,75 @@ class BookingRecord(models.Model):
             recipients,
             html_message=html_message,
         )
+
+
+
+class BookingCartPeriod:
+    def __init__(self, start_date: date, end_date: date, start_season: Season, end_season: Season,
+                 is_full_week: bool, is_flexible_period: bool, is_last_minute_period: bool):
+        self.start_date = start_date
+        self.end_date = end_date
+        self.start_season = start_season
+        self.end_season = end_season
+        self.is_full_week = is_full_week
+        self.is_flexible_period = is_flexible_period
+        self.is_last_minute_period = is_last_minute_period
+        self.rooms = None
+        self.booking_type = None
+        self.cost = None
+
+    def __repr__(self):
+        return (f"BookingPeriod(start_date={self.start_date}, end_date={self.end_date}, "
+                f"season={self.season}, is_full_week={self.is_full_week}, "
+                f"is_flexible_period={self.is_flexible_period}, "
+                f"is_last_minute_period={self.is_last_minute_period}, "
+                f"booking_type={self.booking_type}, cost={self.cost})")
+
+    def set_rooms(self, rooms: QuerySet[Room]):
+        self.rooms = rooms
+
+    def set_booking_type(self):
+        booking_types = self.start_season.booking_types.all()
+        # Filter down to possible type
+        filtered_booking_types = booking_types.exclude(banned_rooms__in=self.rooms).exclude(minimum_rooms__gt=self.rooms.count())
+        if not self.is_full_week:
+            filtered_booking_types = filtered_booking_types.exclude(is_full_week_only=True)
+        if not self.is_flexible_period:
+            filtered_booking_types = filtered_booking_types.exclude(requires_flexible_booking_period=True)
+        if not self.is_last_minute_period:
+            filtered_booking_types = filtered_booking_types.exclude(requires_last_minute_booking_period=True)
+        if filtered_booking_types.exists():
+            highest_priority_booking_type = filtered_booking_types.order_by('priority_rank').first()
+        else:
+            highest_priority_booking_type = None
+        # Make sure any portions in a new season don't violate room restrictions
+        if self.start_season != self.end_season:
+            end_season_booking_types = self.end_season.booking_types.all()
+            # Need to check whether this is a full week under the new season
+            if self.end_season.requires_strict_weeks:
+                week_start_day = self.end_season.config.week_start_day
+                is_full_week_for_end_season = (self.start_date.weekday() == week_start_day and
+                                               (self.end_date - self.start_date).days == 7)
+            else:
+                is_full_week_for_end_season = self.is_full_week
+            end_season_filtered_booking_types = end_season_booking_types.exclude(banned_rooms__in=self.rooms).exclude(minimum_rooms__gt=self.rooms.count())
+            if not is_full_week_for_end_season:
+                end_season_filtered_booking_types = end_season_filtered_booking_types.exclude(is_full_week_only=True)
+            if not self.is_flexible_period:
+                end_season_filtered_booking_types = end_season_filtered_booking_types.exclude(requires_flexible_booking_period=True)
+            if not self.is_last_minute_period:
+                end_season_filtered_booking_types = end_season_filtered_booking_types.exclude(requires_last_minute_booking_period=True)
+            if end_season_filtered_booking_types.exists():
+                end_season_highest_priority_booking_type = end_season_filtered_booking_types.order_by('priority_rank').first()
+            else:
+                end_season_highest_priority_booking_type = None
+            # Validate if there is a compatible booking type in both seasons
+            if highest_priority_booking_type and end_season_highest_priority_booking_type:
+                self.booking_type = highest_priority_booking_type
+            else:
+                self.booking_type = None
+        else:
+            self.booking_type = highest_priority_booking_type
 
 
 class BookingRecordFilter(FilterSet):
