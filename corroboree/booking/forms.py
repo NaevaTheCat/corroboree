@@ -5,7 +5,7 @@ from django import forms
 from django.core.validators import MinValueValidator
 from wagtail.admin import widgets
 
-from corroboree.booking.models import get_booking_types, check_season_rules, booked_rooms
+from corroboree.booking.models import get_booking_types, check_season_rules, booked_rooms, last_weekday_date
 from corroboree.config import models as config
 
 
@@ -39,7 +39,7 @@ class BookingDateRangeForm(forms.Form):
         arrival_date = cleaned_data.get("arrival_date")
         departure_date = cleaned_data.get("departure_date")
         # Time of day rollover checking
-        tod_rollover = config.Config.objects.get().time_of_day_rollover
+        tod_rollover = conf.time_of_day_rollover
         aest_now = datetime.datetime.now(pytz.timezone('Australia/Sydney'))
         compare_date = aest_now.date() if aest_now.time() >= tod_rollover else aest_now.date() - datetime.timedelta(days=1)
         last_week_start = last_weekday_date(compare_date, conf.week_start_day)
@@ -155,8 +155,3 @@ class GuestForm(forms.Form):
     email = forms.EmailField(label='Contact Email', required=False)
 
 
-def last_weekday_date(date: datetime.date, weekday=5):
-    """Given a date and weekday, return the date of the last weekday (datetime ints [0-6])"""
-    date_day = date.weekday()
-    delta = datetime.timedelta((7 - (weekday - date_day)) % 7)
-    return date - delta

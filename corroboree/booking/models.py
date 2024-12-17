@@ -1,4 +1,6 @@
+import datetime
 from datetime import date, datetime, timedelta
+import pytz
 
 from django.conf import settings
 from django.contrib import messages
@@ -23,7 +25,7 @@ from wagtail.snippets.models import register_snippet
 from wagtail.snippets.views.snippets import SnippetViewSet
 
 from corroboree.config import models as config
-from corroboree.config.models import Season, Room
+from corroboree.config.models import Season, Room, BookingType
 
 
 class LiveBookingRecordManager(models.Manager):
@@ -163,12 +165,14 @@ class BookingCartPeriod:
         self.is_flexible_period = is_flexible_period
         self.is_last_minute_period = is_last_minute_period
         self.rooms = None
+        self.valid_booking_types = (None, None)
         self.booking_type = None
         self.cost = None
 
     def __repr__(self):
         return (f"BookingPeriod(start_date={self.start_date}, end_date={self.end_date}, "
-                f"season={self.season}, is_full_week={self.is_full_week}, "
+                f"start_season={self.start_season}, end_season={self.end_season}, "
+                f"is_full_week={self.is_full_week}, "
                 f"is_flexible_period={self.is_flexible_period}, "
                 f"is_last_minute_period={self.is_last_minute_period}, "
                 f"booking_type={self.booking_type}, cost={self.cost})")
@@ -176,48 +180,74 @@ class BookingCartPeriod:
     def set_rooms(self, rooms: QuerySet[Room]):
         self.rooms = rooms
 
-    def set_booking_type(self):
+    def set_cost(self):
+        booking_types, _ = self.valid_booking_types
+        filtered_booking_types = booking_types.exclude(banned_rooms__in=self.rooms).exclude(minimum_rooms__gt=self.rooms.count())
+        self.booking_type = filtered_booking_types.order_by('priority_rank').first()
+        if self.booking_type.is_full_week_only:
+            per_room_cost = self.booking_type.rate
+        else:
+            per_room_cost = self.booking_type.rate * (self.end_date - self.start_date).days
+            # Cap daily rates to maximum
+            try:
+                capping_type = self.start_season.booking_types.get(sets_weekly_rate_cap=True)
+                per_room_cost = min(per_room_cost, capping_type.rate)
+            except BookingType.DoesNotExist:
+                pass
+        if self.booking_type.is_flat_rate:
+            self.cost = per_room_cost
+        else:
+            self.cost = per_room_cost * self.rooms.count()
+
+    def set_valid_booking_types(self):
         booking_types = self.start_season.booking_types.all()
         # Filter down to possible type
-        filtered_booking_types = booking_types.exclude(banned_rooms__in=self.rooms).exclude(minimum_rooms__gt=self.rooms.count())
+        filtered_booking_types = booking_types
         if not self.is_full_week:
             filtered_booking_types = filtered_booking_types.exclude(is_full_week_only=True)
         if not self.is_flexible_period:
             filtered_booking_types = filtered_booking_types.exclude(requires_flexible_booking_period=True)
         if not self.is_last_minute_period:
             filtered_booking_types = filtered_booking_types.exclude(requires_last_minute_booking_period=True)
-        if filtered_booking_types.exists():
-            highest_priority_booking_type = filtered_booking_types.order_by('priority_rank').first()
-        else:
-            highest_priority_booking_type = None
         # Make sure any portions in a new season don't violate room restrictions
         if self.start_season != self.end_season:
             end_season_booking_types = self.end_season.booking_types.all()
             # Need to check whether this is a full week under the new season
-            if self.end_season.requires_strict_weeks:
+            if self.end_season.requires_strict_weeks and not self.is_last_minute_period:
                 week_start_day = self.end_season.config.week_start_day
                 is_full_week_for_end_season = (self.start_date.weekday() == week_start_day and
                                                (self.end_date - self.start_date).days == 7)
             else:
-                is_full_week_for_end_season = self.is_full_week
-            end_season_filtered_booking_types = end_season_booking_types.exclude(banned_rooms__in=self.rooms).exclude(minimum_rooms__gt=self.rooms.count())
+                is_full_week_for_end_season = True if (self.end_date - self.start_date).days == 7 else False
+            end_season_filtered_booking_types = end_season_booking_types
             if not is_full_week_for_end_season:
                 end_season_filtered_booking_types = end_season_filtered_booking_types.exclude(is_full_week_only=True)
             if not self.is_flexible_period:
                 end_season_filtered_booking_types = end_season_filtered_booking_types.exclude(requires_flexible_booking_period=True)
             if not self.is_last_minute_period:
                 end_season_filtered_booking_types = end_season_filtered_booking_types.exclude(requires_last_minute_booking_period=True)
-            if end_season_filtered_booking_types.exists():
-                end_season_highest_priority_booking_type = end_season_filtered_booking_types.order_by('priority_rank').first()
-            else:
-                end_season_highest_priority_booking_type = None
             # Validate if there is a compatible booking type in both seasons
-            if highest_priority_booking_type and end_season_highest_priority_booking_type:
-                self.booking_type = highest_priority_booking_type
+            if filtered_booking_types.exists() and end_season_filtered_booking_types.exists():
+                self.valid_booking_types = (filtered_booking_types, end_season_filtered_booking_types)
             else:
-                self.booking_type = None
+                self.valid_booking_types = (None, None)
         else:
-            self.booking_type = highest_priority_booking_type
+            if filtered_booking_types.exists():
+                self.valid_booking_types = (filtered_booking_types, filtered_booking_types)
+            else:
+                self.valid_booking_types = (None, None)
+
+    def banned_rooms(self):
+        start_types, end_types = self.valid_booking_types
+        rooms = self.start_season.config.rooms.all()
+        start_banned_rooms = rooms
+        end_banned_rooms = rooms
+        if start_types and end_types:
+            for booking_type in start_types:
+                start_banned_rooms = start_banned_rooms & booking_type.banned_rooms.all()
+            for booking_type in end_types:
+                end_banned_rooms = end_banned_rooms & booking_type.banned_rooms.all()
+        return start_banned_rooms.union(end_banned_rooms)
 
 
 class BookingRecordFilter(FilterSet):
@@ -673,6 +703,59 @@ def bookings_for_member_in_range(member: config.Member, arrival_date: date, depa
         arrival_date__gte=departure_date)
     return bookings
 
+def create_booking_cart_periods(start_date: date, end_date: date) -> [BookingCartPeriod]:
+    # Info relating to classifying periods
+    conf = config.Config.objects.get()
+    week_start_day = conf.week_start_day
+    tod_rollover = conf.time_of_day_rollover
+    last_minute_weeks = conf.last_minute_booking_weeks + 1  # idiosyncratic ski club rules
+    flexible_booking_weeks = conf.flexible_booking_weeks + 1 # idiosyncratic ski club rules
+    aest_now = datetime.now(pytz.timezone('Australia/Sydney'))
+    compare_date = aest_now.date() if aest_now.time() >= tod_rollover else aest_now.date() - timedelta(days=1)
+    last_week_start = last_weekday_date(compare_date, week_start_day)
+    # And finally
+    last_minute_period_end = compare_date + timedelta(weeks=last_minute_weeks)
+    flexible_period_end = last_week_start + timedelta(weeks=flexible_booking_weeks)
+    # Start making booking periods
+    booking_cart_periods = []
+    seasons = conf.seasons_in_date_range(start_date, end_date)
+    current_date = start_date
+    while current_date < end_date:
+        start_season = seasons_to_season_on_day(seasons, current_date)
+        # The end of the period depends on strict weeks behaviour
+        if current_date + timedelta(weeks=1) <= last_minute_period_end:
+            # last minute bookings enforce relaxed weeks
+            end_period_date = current_date + timedelta(weeks=1)
+        elif start_season.requires_strict_weeks:
+            end_period_date = last_weekday_date(current_date, week_start_day) + timedelta(weeks=1)
+        else:
+            end_period_date = current_date + timedelta(weeks=1)
+        # Patch an overshoot
+        if end_period_date > end_date:
+            end_period_date = end_date
+        # period properties
+        is_full_week = (end_period_date - current_date).days == 7
+        is_flexible_period = end_period_date <= flexible_period_end
+        is_last_minute_period = end_period_date <= last_minute_period_end
+        if end_period_date.month != current_date.month:
+            end_season = seasons_to_season_on_day(seasons, end_period_date)
+        else:
+            end_season = start_season
+        booking_cart_period = BookingCartPeriod(
+            start_date=current_date,
+            end_date=end_period_date,
+            start_season=start_season,
+            end_season=end_season,
+            is_full_week=is_full_week,
+            is_flexible_period=is_flexible_period,
+            is_last_minute_period=is_last_minute_period
+        )
+        booking_cart_periods.append(booking_cart_period)
+        current_date = end_period_date
+    return booking_cart_periods
+
+
+
 
 def dates_to_weeks(arrival_date: date, departure_date: date, week_start_day=5) -> (int, int, int):
     """For a date range and day of week return the number of weeks and surrounding 'spare' days
@@ -824,3 +907,10 @@ def booked_rooms(arrival_date, departure_date) -> [int]:
     )
     booked_room_ids = overlapping_bookings.values_list('rooms__room_number', flat=True)
     return booked_room_ids
+
+
+def last_weekday_date(date: date, weekday=5):
+    """Given a date and weekday, return the date of the last weekday (datetime ints [0-6])"""
+    date_day = date.weekday()
+    delta = timedelta((7 - (weekday - date_day)) % 7)
+    return date - delta

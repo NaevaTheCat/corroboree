@@ -33,7 +33,7 @@ class Config(ClusterableModel):
         help_text="What time of day to open bookings for the day max_weeks_till_booking from now")
     week_start_day = models.IntegerField(choices=Weekday,
                                          help_text="The day used to determine when a week starts")
-    flexible_booking_period = models.IntegerField(default=13,
+    flexible_booking_weeks = models.IntegerField(default=13,
                                                   help_text="Period to allow BookingTypes that reference requiring flexible booking periods in.")
     last_minute_booking_weeks = models.IntegerField(default=2,
                                                     help_text="Number of weeks for last minute booking rules to apply")
@@ -47,7 +47,7 @@ class Config(ClusterableModel):
         FieldPanel("week_start_day"),
         FieldRowPanel([
             FieldPanel("max_weeks_till_booking"),
-            FieldPanel("flexible_booking_period"),
+            FieldPanel("flexible_booking_weeks"),
             FieldPanel("last_minute_booking_weeks"),
             FieldPanel("time_of_day_rollover"),
         ]),
