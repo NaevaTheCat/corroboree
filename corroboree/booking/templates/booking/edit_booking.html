@@ -4,8 +4,11 @@
 {% load booking_record_tags %}
 
 {% block content %}
-
+{% if booking.status != 'FN' %}
     {{ page.edit_text | richtext }}
+{% else %}
+	{{ page.edit_guests_text | richtext }}
+{% endif %}
 
 <ul>{% for period in booking_cart %}
 	<li>{{ period }}</li>{% endfor %}</ul>

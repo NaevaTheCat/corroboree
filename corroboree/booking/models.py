@@ -458,6 +458,8 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                                   help_text='Text to introduce upcoming bookings if any exist')
     edit_text = RichTextField(blank=True,
                               help_text='Text to display when editing a booking')
+    edit_guests_text = RichTextField(blank=True,
+                                     help_text='Text to display when editing guests')
     pay_text = RichTextField(blank=True,
                              help_text='Text to display at the payment page')
     payment_success_text = RichTextField(blank=True,
