@@ -10,9 +10,6 @@
 	{{ page.edit_guests_text | richtext }}
 {% endif %}
 
-<ul>{% for period in booking_cart %}
-	<li>{{ period }}</li>{% endfor %}</ul>
-
     <div class='booking-summary-table'>
 	<table border=1>
 	<thead>
@@ -31,12 +28,15 @@
 	</tbody>
 	</table>
     </div>
-
+	<div class="container">
+	<div class="period-breakdown"><ul>{% for period in booking_cart %}
+	<li>{{ period }}</li>{% endfor %}</ul></div>
     <form action="." method="POST">
 	{% csrf_token %}
 	{% if member_in_attendance_form %}
-	    {{ member_in_attendance_form }}
+		<div class="member-in-attendance-form">{{ member_in_attendance_form }}</div>
 	{% endif %}
+	</div>
 	{{ guest_forms.management_form }}
 	{% for form in guest_forms %}
 	    <div class="form-table">

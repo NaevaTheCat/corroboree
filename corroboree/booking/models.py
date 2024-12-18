@@ -182,9 +182,9 @@ class BookingCartPeriod:
                 f"booking_type={self.booking_type}, cost={self.cost})")
 
     def __str__(self):
-        return (f"BookingPeriod: {self.start_date} - {self.end_date}, "
-                f"season {self.start_season}, booking_type {self.booking_type}, "
-                f"cost ${self.cost}")
+        return (f"Period: {self.start_date} - {self.end_date}, "
+                f"Rate: {self.booking_type}, Rooms: {self.rooms.count()}, "
+                f"Cost ${self.cost}")
 
     def set_rooms(self, rooms: QuerySet[Room]):
         self.rooms = rooms
