@@ -182,7 +182,7 @@ class BookingCartPeriod:
                 f"booking_type={self.booking_type}, cost={self.cost})")
 
     def __str__(self):
-        return (f"Period: self.start_date} - {self.end_date}, "
+        return (f"Period: {self.start_date} - {self.end_date}, "
                 f"Rate: {self.booking_type}, Rooms: {self.rooms.count()}, "
                 f"Cost ${self.cost}")
 
