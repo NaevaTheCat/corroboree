@@ -1,11 +1,11 @@
 import datetime
-import pytz
 
+import pytz
 from django import forms
 from django.core.validators import MinValueValidator
 from wagtail.admin import widgets
 
-from corroboree.booking.models import get_booking_types, check_season_rules, booked_rooms, last_weekday_date, create_booking_cart_periods
+from corroboree.booking.models import check_season_rules, booked_rooms, last_weekday_date, create_booking_cart_periods
 from corroboree.config import models as config
 
 

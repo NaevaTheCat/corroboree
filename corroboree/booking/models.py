@@ -1,7 +1,7 @@
 import datetime
 from datetime import date, datetime, timedelta
-import pytz
 
+import pytz
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import ValidationError, PermissionDenied
@@ -532,7 +532,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
             member = request.user.member
             if booking_id is None:
                 booking_id = BookingRecord.live_objects.filter(member=member).order_by('last_updated').first()
-            # Try find the booking, but make sure it's ours and editable!
+            # Try to find the booking, but make sure it's ours and editable!
             try:
                 booking = BookingRecord.live_objects.get(
                     pk=booking_id,
@@ -614,7 +614,6 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
                     # that's even needed
                 )
             except BookingRecord.DoesNotExist:  # Due to using PK no need to catch multiple objects
-                booking = None
                 return self.render(request,
                                    template='booking/booking_not_found.html')  # TODO: Mod template for url message
             return self.render(request,
@@ -661,7 +660,7 @@ class BookingPageUserSummary(RoutablePageMixin, Page):
             member = request.user.member
             if booking_id is None:
                 booking_id = BookingRecord.live_objects.filter(member=member).order_by('last_updated').first()
-            # Try find the booking, but make sure it's ours and editable!
+            # Try to find the booking, but make sure it's ours and editable!
             try:
                 booking = BookingRecord.live_objects.get(
                     pk=booking_id,
@@ -786,28 +785,6 @@ def dates_to_weeks(arrival_date: date, departure_date: date, week_start_day=5) -
         till_week = departure_date - timedelta(days=trailing_days)
         weeks = int((till_week - from_week).days / 7)
         return leading_days, weeks, trailing_days
-
-
-def get_booking_types(conf: config.Config, arrival_date: date, departure_date: date):
-    """Returns a dictionary of date-keyed booking type querysets with dates matching either a week start or a 'spare' day
-
-    Assumes that a week has a weekly booking type. Will not return daily bookings for week-equivalent dates"""
-    leading_days, weeks, trailing_days = dates_to_weeks(arrival_date, departure_date, week_start_day=conf.week_start_day)
-    seasons = list(conf.seasons_in_date_range(arrival_date, departure_date))
-    leading_dates = [arrival_date + timedelta(days=x) for x in range(leading_days)]
-    week_dates = [arrival_date + timedelta(days=leading_days + x * 7) for x in range(weeks)]
-    trailing_dates = [arrival_date + timedelta(days=7 * weeks + leading_days + x) for x in range(trailing_days)]
-    booking_types = {}
-    for day in leading_dates:
-        season_on_day = seasons_to_season_on_day(seasons, day)
-        booking_types[day] = season_on_day.booking_types.exclude(is_full_week_only=True)  # This is a single day
-    for week_start in week_dates:
-        season_on_day = seasons_to_season_on_day(seasons, week_start)
-        booking_types[week_start] = season_on_day.booking_types.filter(is_full_week_only=True)  # Only the weekly ones
-    for day in trailing_dates:
-        season_on_day = seasons_to_season_on_day(seasons, day)
-        booking_types[day] = season_on_day.booking_types.exclude(is_full_week_only=True)
-    return booking_types
 
 
 def seasons_to_season_on_day(seasons: [config.Season], day: date) -> config.Season:
