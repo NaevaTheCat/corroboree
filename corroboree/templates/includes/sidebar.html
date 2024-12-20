@@ -4,9 +4,12 @@
 <div class="menu">
     {% get_site_root as site_root %}
     <nav>
-            <a href="{% pageurl site_root %}">Home</a>
             {% for menuitem in site_root.get_children.live.in_menu %}
-                <a href="{% pageurl menuitem %}">{{ menuitem.title }}</a>
+                    {% if menuitem.title == page.title %}
+                        <a href="{% pageurl menuitem %}" class="active">{{ menuitem.title }}</a>
+                    {% else %}
+                        <a href="{% pageurl menuitem %}">{{ menuitem.title }}</a>
+                    {% endif %}
             {% endfor %}
     </nav>
 </div>
