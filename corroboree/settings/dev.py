@@ -7,9 +7,11 @@ DEBUG = True
 SECRET_KEY = "django-insecure-jyb&tzb5@1lgco5+*jrr@el$vtgkh3x9w&#=h-khta$#=p&n&-"
 
 DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.path.join(BASE_DIR, "db.sqlite3"),
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'OPTIONS': {
+            'read_default_file': os.path.join(BASE_DIR, 'corroboree/settings/my.cnf'),
+        },
     }
 }
 
