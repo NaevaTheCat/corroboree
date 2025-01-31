@@ -55,7 +55,6 @@ def get_room_availability(request):
 PAYPAL_CLIENT_ID = settings.PAYPAL_CLIENT_ID
 PAYPAL_CLIENT_SECRET = settings.PAYPAL_CLIENT_SECRET
 PAYPAL_MERCHANT_EMAIL = settings.PAYPAL_MERCHANT_EMAIL
-PAYPAL_MERCHANT_ID = settings.PAYPAL_MERCHANT_ID
 PAYPAL_SANDBOX = settings.PAYPAL_SANDBOX
 
 # Set paypal environment based on django
@@ -107,7 +106,6 @@ def create_booking_order(request, booking_id):
                     description='Neigejindi booking: %s' % booking_id,
                     payee=Payee(
                         email_address=PAYPAL_MERCHANT_EMAIL,
-                        merchant_id=PAYPAL_MERCHANT_ID
                     )
                 )
             ],
