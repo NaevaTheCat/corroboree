@@ -3,11 +3,24 @@ from wagtail.snippets.views.snippets import SnippetViewSet
 
 from corroboree.config.models import Config, Member, RoomType, Room, Season, BookingType, FamilyMember
 
+class MemberViewSet(SnippetViewSet):
+    model = Member
+    icon = 'user'
+    list_display = ['last_name', 'first_name', 'share_number', 'contact_email', 'get_member_account']
+    ordering = ['share_number']
+    copy_view_enabled = False
+    list_filter = {
+        'last_name' : ['icontains'],
+        'first_name' : ['icontains'],
+        'share_number' : ['exact']
+    }
+
 
 class FamilyMemberViewSet(SnippetViewSet):
     model = FamilyMember
     icon = 'user'
-    list_display = ['full_name', 'contact_email', 'primary_shareholder']
+    list_display = ['last_name', 'first_name', 'contact_email', 'primary_shareholder']
+    ordering = ['primary_shareholder']
     copy_view_enabled = False
     list_filter = {
         'primary_shareholder__last_name': ['icontains'],
@@ -28,7 +41,7 @@ class BookingTypeViewSet(SnippetViewSet):
 
 
 register_snippet(Config)
-register_snippet(Member)
+register_snippet(MemberViewSet)
 register_snippet(FamilyMemberViewSet)
 register_snippet(RoomType)
 register_snippet(Room)
