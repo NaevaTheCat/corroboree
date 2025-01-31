@@ -36,6 +36,7 @@ l18n==2021.3
 laces==0.1.1
 matplotlib-inline==0.1.7
 msgpack==1.1.0
+mysqlclient==2.2.6
 openpyxl==3.1.2
 packaging==24.2
 parso==0.8.4
