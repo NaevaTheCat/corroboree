@@ -1,16 +1,6 @@
-# Configuration
+# Booking System Technical Summary
 
-## NB
-Member 0 is dummy member for maintenance bookings
-
-# Booking System Notes
-
-Currently validation is clean() methods for children of
-`ClusterableModel`s is broken. You have a choice between a convenient
-interface and being able to screw yourself over. Make whatever
-decision you feel comfortable with.
-
-## Website Configuration
+## Booking System Configuration
 Static config is handled in the settings.py file, 'live' configuration
 regarding the booking system is handled via snippets in the admin
 menu. The configuration is heirarchy is:
@@ -21,6 +11,7 @@ menu. The configuration is heirarchy is:
   |- Time of day rollover
   |- Number of rooms
   |- Week start day
+  |- Flexible booking weeks
   |- Last minute booking weeks
   |- Maximum family members
 w  +- Members
@@ -48,17 +39,22 @@ w  +- Members
      |- Start month
      |- End month
      |- Season is peak
+	 |- Requires strict weeks
      +- Booking Types
        |- Booking type name
        |- Rate
        |- Is full week only
+	   |- Sets weekly rate cap
+	   |- Requires flexible booking period
+	   |- Requires last minute booking period
        |- Is flat rate
        |- Banned rooms
        |- Minimum Rooms
+	   |- Priority
 ```
 In the above list entries marked with a '|-' are configuration values
 under the Snippet, while items markeed with '+-' are Snippets (in
-django terms models, for users discrete bundles carrying configuration
+django terms models, discrete bundles carrying configuration
 information). Snippets connected by lines are linked by the
 subordinate (child) snippet deriving some properties through
 association with the parent snippet. For example, Family Members are
@@ -69,13 +65,15 @@ fields through the web interface; however, some instruction on the
 underlying abstractions also follows:
 
 - A 'Config' represents the state of the lodge and carries
-entire-lodge settings. Weeks are released for booking one at a time on
-a rolling basis at a certain time of day AEST (to avoid 12:01 am)
-booking sniping which most top level settings here refer to. Last
-minute bookings happen a certain number of weeks out (configured here)
-and if a booking ends within that period normal season rules are suspended.
+ entire-lodge settings. Weeks are released for booking one at a time
+ on a rolling basis at a certain time of day AEST (to avoid 12:01 am
+ booking sniping) which most top level settings here refer to. Last
+ minute bookings happen a certain number of weeks out (configured
+ here) and if a booking ends within that period normal season rules
+ are suspended.
 - A 'Member' represents one share, and is associated with the
-  shareholder
+  shareholder. Member 0 is a dummy member that can be used when
+  blocking out rooms for maintenance.
 - A 'Family Member' is somebody authorised to use that share to book a
   stay. The person who is associated with the Member share is a Family
   Member of that share too.
@@ -89,13 +87,31 @@ and if a booking ends within that period normal season rules are suspended.
   season' in which case it can overlay another non-peak season and
   override the behaviour for the overlapping season. This is useful to
   avoid duplicating 'base' season config either side of a month of
-  peak activity where additional restrictions or fees may apply.
+  peak activity where additional restrictions or fees may
+  apply. If a season `requires strict weeks` then for a booking to
+  count as a weekly booking it must arrive on the `week start day` and
+  depart on the `week start day`. Otherwise any contiguous seven-day
+  period will use weekly rates.
 - A 'Booking Type' is a valid sort of booking for the attached
   season. For example a daily rate applicable to some subset of
   rooms. A 'flat rate' is approprate if and only if the cost of the
-  booking should not be multiplied by the number of rooms booked. 
+  booking should not be multiplied by the number of rooms
+  booked. Bookings which require flexible booking period can only be
+  made inside that number of weeks. In a season one booking can be
+  nominated to set the weekly rate cap, if this is set then if a
+  number of days in a week would cost more than this booking they will
+  instead be charged at the rate of this booking.
   
-## Ongoing Management
+### NB
+
+Currently (2025-02-10) validation methods for children of
+`ClusterableModel`s is broken. You have a choice between a convenient
+interface using the inline forms for child snippets such as
+FamilyMembers or creating those directly via an inconvenient but safe
+method. Make whatever choice you find appealing.
+
+  
+## Ongoing Management of Configuration
 
 ### Changing Member Associated with a Share
 
@@ -112,49 +128,111 @@ The full proceedure is to:
 - Create or reactivate a User for the new member.
 - Check the new user has a OTP device if reactivating them.
 
+### Changing Season Dates
 
-# Booking System
+To avoid tripping validation first _shrink_ seasons so that there are
+vacant months to expand into, then edit the appropriate season to
+cover the now-vacant months.
 
-Booking are represented by Booking Records, booking records can be
-browsed via the 'Bookings' entry in the admin sidebar. The display
-presents a summary of current records and several filters. Booking
-records can be inspected in depth via the '...' next to their
-name. Additionally the current filtered selection can be exported to a
-spreadsheet via the '...' menu at the top of the page.
+## Booking Record Model
 
-When setting up pages there are two important pages. 'Booking Page
-User Summary' must be at the url '/my-bookings/' (configured via the
-slug) and 'Booking Page' must be at '/make-a-booking/'. 
+Booking are represented by Booking Records which have the following
+structure:
+```
++- BookingRecord
+  |- Member
+  |- member name at creation
+  |- last updated
+  |- arrival date
+  |- departure date
+  |- Rooms
+  |- Member in Attendance
+  |- member in attendance name at creation
+  |- other attendees
+  |- cost
+  |- payment status
+  |- paypal transaction id
+  |- status
+  |- reminder sent
+  |- send admin email
+```
 
-## Booking System Logic
+Capitalised entries are relations to models defined in the
+configuration (see [Booking System
+Configuration](#booking-system-configuration)). Most fields are
+documented via their helptext, some unusual features are explained
+below:
+
+- member name at creation and member in attendance (MIA) name at
+  creation: Since a member might change in the future (and with them
+  the MIA) these fields are automatically assigned when a
+  BookingRecord is created for integrity of any records
+- last updated: a field only shown in the inspector or on export, this
+  marks when a record was last updated. It is used for expiring
+  incomplete bookings and for record keeping
+- other attendees: a JSON record of different people attending, mostly
+  of interest if something goes wrong. The format is `{guest\_x:
+  {first\_name: foo, last\_name: bar, email: baz@tux.com}, ..}` which
+  is a relatively cursed format that doesn't display well but such is
+  c'est la vi
+- payment status: One of `IS (issued), PD (paid), FL (failed), RF
+  (refunded), or NI (not issued)`. Payments start as Not Issued, and
+  become Paid after payment goes through. Currently the other statuses
+  can't be reached via code (failures in payment spew the error to the
+  user) but can be set manually if appropriate.
+- status: One of `PR (in progress), SB (submitted), FN (finalised), CX
+  (cancelled)`. Bookings start in progress, move to submitted once a
+  user has set a MIA, and optionally guests. A booking is set as
+  finalised once payment has been processed and cancelled if a user
+  cancels it or it is expired.
+- reminder sent: a flag used by a management command which sends
+  emails reminding users to fill out guests 2 weeks before stay.
+- send admin email: A flag set via the admin form which, if set,
+  causes a post save signal to send an email to the user similar to
+  one they would receive if making a booking normally. It then gets unset.
+
+Booking records can be browsed via the 'Bookings' entry in the admin
+sidebar, or via the snippets menu. The display presents a summary of
+current records and several filters. Booking records can be inspected
+in depth via the '...' next to their name. Additionally the current
+filtered selection can be exported to a spreadsheet via the '...' menu
+at the top of the page.
+
+## Booking System Flow
 
 When a user searches a date range it is validated against the weekly
-release of dates and for logical consistency. Then rooms for which a
-booking is possible (specifically for each day or week in the range
-there is at least one possible booking for that room. N.B. As of
-2024-11-30 if there is not a weekly rate for a room and it is going to
-be booked for a week it will show up as unavailable) are presented to
-them. For a given week the weekly rate on the day of the start of the
-week will apply.
+release of dates and for logical consistency. This range is then used
+to generate a list of `BookingCartPeriod`s by consuming the time in
+chunks according to the rules set by the season (or the date being
+inside the last minute period) such that each chunk represents the
+best attempt at a whole week. The `BookingCartPeriod`s are then tested
+a to determine what rooms are impossible to book during that period
+(because there are no legal bookings that would allow that room) and
+this is used to generate a selection of rooms that can be booked for
+the entire date range.
 
-Finally the selected rooms are compared against the season rules. If a
-day falls within a 'peak' season only the restrictions from the peak
-season will apply.
+Once a user selects the rooms their selection is tested against the
+season rules to ensure that adding this booking to their existing ones
+will not exceed an allowed number of room-weeks. If it is a
+`BookingRecord` is created and marked as in progress. As a
+`BookingRecord` now exists the selected rooms will be marked as occupied.
 
-Once a booking is submitted this way it goes into an 'in progress'
-status. Bookings which are 'in progress' and do not progress further
-are set to 'cancelled' after 30 minutes from their last updated
-time. In practice this is the time it was submitted.
+Bookings which are 'in progress' and do not progress further are set
+to 'cancelled' after 30 minutes from their last updated time.
 
 After submission a user is sent to the edit page, where they must
 nominate a member in attendance and optionally may fill in
-guests. Doing so moves a booking to the 'submitted' status and extends
-the hold to 24 hours.
+guests. Here the `BookingCartPeriod`s are used to generate a summary
+of the costs by counting the fee for the highest priority
+`BookingType` in the period, subject to any weekly rate caps, and the
+total is displayed. Once a user accepts the total and has set a MIA
+the booking moves to the 'submitted' status and the room hold is
+extended for 24 hours.
 
-Finally the user is directed to review the booking and pay. After
-payment is recieved the booking is moved to the 'finalised' status and
-payment is recorded along with a transaction ID, additionally a
-summary email is sent to the member and the member in attendance. Prior to payment a
+The user is directed to review the booking and pay. After payment is
+received the booking is moved to the 'finalised' status and payment is
+recorded along with a transaction ID, additionally a summary email is
+sent to the member and the member in attendance. Prior to payment a
 user may cancel a booking at any time via the '/my-bookings/'
 page. After payment cancellation and refunds must be done manually.
 
@@ -165,7 +243,13 @@ attendees one week out from the start date.
 Users are shown a summary of all their upcoming bookings on their
 'my-bookings' page.
 
-## Managing the booking system
+### Important Note
+
+It is hard-coded that 'Booking Page User Summary' must be at the url
+'/my-bookings/' (configured via the slug) and 'Booking Page' must be
+at '/make-a-booking/'.
+
+## Ongoing Management of Booking Records
 
 In general a booking should not be deleted. If a booking is refunded
 or otherwise cancelled its status should be set to 'cancelled' and the
@@ -173,9 +257,12 @@ or otherwise cancelled its status should be set to 'cancelled' and the
 administration account, which has the ability to delete any item,
 should not be used for proceedural management of bookings.
 
-# Site layout and formatting
-Menu order is adjusted by adjusting 'sort menu order' in the edit menu
-of the homepage.
+If a booking is created or edited via the administration interface a
+Member will not normally be notified of the booking or changes
+(although it will still display under their my-bookings summary). If a
+user _should_ be notified then the administrator should tick the 'send
+admin email' option on the form. If this is set a post-save signal
+sends an email and then unsets it.
 
 # Administration Commands
 
@@ -203,7 +290,8 @@ early in the morning.
 
 django-two-factor-auth is used. A post save/edit signal reinitialises
 a default email otp device whenever an account is created or the email
-updated.
+updated. These otp devices can only be managed via the django admin
+which is visited at /django-admin/.
 
 The name being set to 'default' means it is required for login.
 
@@ -223,24 +311,65 @@ two\_factor. Templates are under registration/ and two\_factor/.
 
 ## Deployment
 
-TODO: write as doing
+- Download the relevant release
+- Symlink the folder to /opt/wagtail/corroboree
+- Set up a venv at /opt/wagtail/.venv and install requirements
+- Configure settings/my.cnf for production database
+- Set up a .env file with production configuration, must include:
+  ```
+  DJANGO_SETTINGS_MODULE=corroboree.settings.production
+  PAYPAL_CLIENT_ID=
+  PAYPAL_CLIENT_SECRET=
+  PAYPAL_MERCHANT_EMAIL=
+  SECRET_KEY=
+  EMAIL_HOST=
+  EMAIL_PORT=
+  EMAIL_HOST_USER=
+  EMAIL_HOST_PASSWORD=
+  EMAIL_USE_SSL=True
+  DEFAULT_FROM_EMAIL=
+  BOOKING_FROM_EMAIL=
+  OTP_EMAIL_SENDER=
+  ```
+- Make a folder /opt/wagtail/run and symlink deploy/gunicorn_start to
+  /opt/wagtail/
+- Link the gunicorn.service in deploy/ and enable and start it.
+- run `python manage.py collectstatic --noinput`
+- symlink nginx config to conf.d, editing the cert path and key path
+- Make sure allowed hosts is set appropriately in settings, make sure
+  the paypal environment is set appropriately.
+- Set up the site content as described in
+  [Configuration](#configuration) and [Pages](#pages).
+- Redirect `/` to `/news`
+- Ensure outbound email is possible in firewall rules.
+- Add export of
+  `DJANGO_SETTINGS_MODULE=corroboree.settings.production` to bashrc to
+  avoid cascading fuck ups.
+- Set up the crontab.
 
 ### Crontab
 
 Set up the crontab to run the commands outlined in [Administration
 Commands](#administration-commands) section.
 
-TODO: samples
+An example config is below:
+
+```
+0 0 * * * export DJANGO_SETTINGS_MODULE=corroboree.settings.production && /opt/wagtail/.venv/bin/python /opt/wagtail/corroboree/manage.py clearsessions
+0 0 * * * export DJANGO_SETTINGS_MODULE=corroboree.settings.production && /opt/wagtail/.venv/bin/python /opt/wagtail/corroboree/manage.py send-reminders
+0 * * * * export DJANGO_SETTINGS_MODULE=corroboree.settings.production && /opt/wagtail/.venv/bin/python /opt/wagtail/corroboree/manage.py expire-bookings
+```
 
 ## Configuration
 
 (most) Administration is done via the `[site]/admin/` url which is the
-wagtail administration interface. Configuration described in the above
-section takes effect immediately upon saving. Navigating to 'Snippets'
-on the sidebar will allow you to create the relevant objects (+ sign
-near name after clicking) or edit existing ones. Some allow you to add
-additional child snippets in their form (e.g. config lets you
-'add members'). Using this is fine, however as of 2024-11-30 some
+wagtail administration interface. Configuration described in [Booking
+System Configuration](#booking-system-configuration) takes effect
+immediately upon saving. Navigating to 'Snippets' on the sidebar will
+allow you to create the relevant objects (+ sign near name after
+clicking) or edit existing ones. Some allow you to add additional
+child snippets in their form (e.g. config lets you 'add
+members'). Using this is fine, however as of 2024-11-30 some
 validation safeguards are broken so bear that in mind.
 
 ### Things to ensure
@@ -251,7 +380,10 @@ validation safeguards are broken so bear that in mind.
   season they are active. If configuring a peak `Season` you will need
   to replicate the daily/weekly etc rates for that `Season` in the
   peak.
-- `BookingType` priorities are set correctly.
+- If there should be a fee cap on daily bookings made in a week then
+  one weekly booking in that season should be nominated to set that cap.
+- `BookingType` priorities are set correctly (lower number means
+  higher priority)/
 
 ## Pages
 
@@ -281,7 +413,7 @@ To add posts to the news page just add child pages.
 
 * Any page which should be private. At minimum:
 
-  -  Make a Booking
+  - Make a Booking
   - My Bookings
   - Contact Us
 
