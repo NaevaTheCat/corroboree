@@ -2,8 +2,8 @@
 
 ## Booking System Configuration
 Static config is handled in the settings.py file, 'live' configuration
-regarding the booking system is handled via snippets in the admin
-menu. The configuration is heirarchy is:
+regarding the booking system is handled via *Snippets* in the admin
+menu. The configuration is hierarchy is:
 
 ```
 +- Config
@@ -76,18 +76,20 @@ underlying abstractions also follows:
   blocking out rooms for maintenance.
 - A 'Family Member' is somebody authorised to use that share to book a
   stay. The person who is associated with the Member share is a Family
-  Member of that share too.
+  Member of that share too. If a Member is not also a Family Member of
+  themselves then they *will not be able* to chose themselves as a
+  member in attendance.
 - A 'Room Type' is a configuration a room can have in terms of number
   of beds. It automatically derives the maximum number of people who
   can stay according to the available beds.
 - A 'Room' is a physical room in the lodge.
 - A 'Season' is a range of months associated with a booking
   season. This does not have to line up with a calendar season but
-  does need to start and end on a calendar month. A season can a 'peak
-  season' in which case it can overlay another non-peak season and
-  override the behaviour for the overlapping season. This is useful to
-  avoid duplicating 'base' season config either side of a month of
-  peak activity where additional restrictions or fees may
+  does need to start and end on a calendar month. A season can be
+  'peak season' in which case it can overlay another non-peak season
+  and override the behaviour for the overlapping season. This is
+  useful to avoid duplicating 'base' season config either side of a
+  month of peak activity where additional restrictions or fees may
   apply. If a season `requires strict weeks` then for a booking to
   count as a weekly booking it must arrive on the `week start day` and
   depart on the `week start day`. Otherwise any contiguous seven-day
@@ -96,11 +98,11 @@ underlying abstractions also follows:
   season. For example a daily rate applicable to some subset of
   rooms. A 'flat rate' is approprate if and only if the cost of the
   booking should not be multiplied by the number of rooms
-  booked. Bookings which require flexible booking period can only be
-  made inside that number of weeks. In a season one booking can be
-  nominated to set the weekly rate cap, if this is set then if a
-  number of days in a week would cost more than this booking they will
-  instead be charged at the rate of this booking.
+  booked. Bookings which `require flexible booking period` can only be
+  made during the flexible booking period configured. In a season one
+  booking can be nominated to set the weekly rate cap, if this is set
+  then if a number of days in a week would cost more than this booking
+  they will instead be charged at the rate of this booking.
   
 ### NB
 
@@ -206,7 +208,7 @@ to generate a list of `BookingCartPeriod`s by consuming the time in
 chunks according to the rules set by the season (or the date being
 inside the last minute period) such that each chunk represents the
 best attempt at a whole week. The `BookingCartPeriod`s are then tested
-a to determine what rooms are impossible to book during that period
+to determine what rooms are impossible to book during that period
 (because there are no legal bookings that would allow that room) and
 this is used to generate a selection of rooms that can be booked for
 the entire date range.
@@ -459,6 +461,10 @@ Contact Us uses the following:
 
 ## Users
 
+User accounts are configured using the wagtail user system. To 
+browse or edit users go to the settings -> users portion of the 
+wagtail admin interface.
+
 ### User Groups
 
 By default there are 2 groups that administration users can be
@@ -468,9 +474,8 @@ Editor is a suitable role for anyone who is able to edit but not
 publish changes to pages.
 
 Additionally an administrator role should be created, along with a
-booking officer role. Assigning permissions as appropriated. The
-booking officer should only be able to edit and view booking
-records.
+booking officer role. Assigning permissions as appropriate. The
+booking officer should only be able to edit and view booking records.
 
 Groups which should have access to the administration interface will
 need that ticked.
