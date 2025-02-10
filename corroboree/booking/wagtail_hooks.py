@@ -116,6 +116,7 @@ class BookingRecordViewSet(SnippetViewSet):
             FieldPanel('payment_status'),
             FieldPanel('paypal_transaction_id'),
         ]),
+        FieldPanel('send_admin_email')
     ]
 
 

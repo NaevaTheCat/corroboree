@@ -82,6 +82,9 @@ class BookingRecord(models.Model):
     paypal_transaction_id = models.CharField(max_length=20, blank=True)
     status = models.CharField(max_length=2, choices=BookingRecordStatus)
     reminder_sent = models.BooleanField(default=False)
+    send_admin_email = models.BooleanField(default=False, help_text="Mark this True if an email should be sent "
+                                                                    "indicating that an administrator created or "
+                                                                    "tinkered with this booking")
 
     objects = models.Manager()
     live_objects = LiveBookingRecordManager()
