@@ -1,7 +1,7 @@
 import datetime
 
 from django import forms
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, ObjectDoesNotExist
 from django.core.validators import MaxValueValidator, MinValueValidator, MinLengthValidator
 from django.db import models
 from django.db.models import F, Q
@@ -131,6 +131,14 @@ class Member(PersonBase, ClusterableModel):
                                            MaxValueValidator(50, message="Cannot exceed 50 shares"),
                                            MinValueValidator(0, message="Share number is less than 1")
                                        ])
+
+    def get_member_account(self):
+        try:
+            return self.member_account
+        except ObjectDoesNotExist:
+            return None
+
+    get_member_account.short_description = 'Member Account'
 
     panels = [
         FieldPanel("config"),

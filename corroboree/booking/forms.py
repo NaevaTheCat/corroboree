@@ -9,7 +9,6 @@ from corroboree.booking.models import check_season_rules, booked_rooms, last_wee
 from corroboree.config import models as config
 
 
-# TODO round to week chunks
 class BookingDateRangeForm(forms.Form):
     arrival_date = forms.DateField(
         label="Arrival date",

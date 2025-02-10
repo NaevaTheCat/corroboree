@@ -208,3 +208,4 @@ OTP_EMAIL_SENDER = os.getenv('OTP_EMAIL_SENDER')
 OTP_EMAIL_SUBJECT = "Neige Jindi: Login Code"
 OTP_EMAIL_BODY_TEMPLATE_PATH = "email/otp.txt"
 OTP_EMAIL_BODY_HTML_TEMPLATE_PATH = "email/otp.html"
+OTP_EMAIL_TOKEN_VALIDITY=900 #15 minute validity on OTP codes for boomers
