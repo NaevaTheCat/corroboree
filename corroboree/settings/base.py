@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "corroboree",
     "corroboree.config",
     "corroboree.users",
+    "corroboree.users.apps.CustomUsersAppConfig",
     "corroboree.rates",
     "corroboree.booking",
     "corroboree.news",
@@ -46,7 +47,6 @@ INSTALLED_APPS = [
     "wagtail.contrib.routable_page",
     "wagtail.embeds",
     "wagtail.sites",
-    "wagtail.users",
     "wagtail.snippets",
     "wagtail.documents",
     "wagtail.images",
@@ -195,9 +195,6 @@ WAGTAIL_FRONTEND_LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
 AUTH_USER_MODEL = 'users.MemberAccount'
-WAGTAIL_USER_EDIT_FORM = "corroboree.users.forms.CustomUserEditForm"
-WAGTAIL_USER_CREATION_FORM = "corroboree.users.forms.CustomUserCreationForm"
-WAGTAIL_USER_CUSTOM_FIELDS = ["member"]
 
 # Email Settings
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
